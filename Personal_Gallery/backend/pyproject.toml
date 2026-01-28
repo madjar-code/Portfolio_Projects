@@ -6,7 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "django>=6.0.1",
-<<<<<<< HEAD
     "django-cors-headers>=4.9.0",
     "django-jazzmin>=3.0.1",
     "djangorestframework>=3.16.1",
@@ -16,7 +15,6 @@ dependencies = [
     "google-auth>=2.48.0",
     "google-auth-httplib2>=0.3.0",
     "google-auth-oauthlib>=1.2.4",
-=======
->>>>>>> cb216ac (setup: Setup backend for the gallery project)
+    "pillow>=12.1.0",
     "python-dotenv>=1.2.1",
 ]
