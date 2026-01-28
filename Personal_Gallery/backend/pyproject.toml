@@ -1,0 +1,22 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=6.0.1",
+<<<<<<< HEAD
+    "django-cors-headers>=4.9.0",
+    "django-jazzmin>=3.0.1",
+    "djangorestframework>=3.16.1",
+    "djangorestframework-simplejwt>=5.5.1",
+    "djoser>=2.3.3",
+    "drf-yasg>=1.21.14",
+    "google-auth>=2.48.0",
+    "google-auth-httplib2>=0.3.0",
+    "google-auth-oauthlib>=1.2.4",
+=======
+>>>>>>> cb216ac (setup: Setup backend for the gallery project)
+    "python-dotenv>=1.2.1",
+]
