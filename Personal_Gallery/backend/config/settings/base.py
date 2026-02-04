@@ -46,6 +46,9 @@ INSTALLED_APPS = [
     # Local apps
     "apps.auth",
     "apps.photos",
+
+    # Cleanup (must be last)
+    "django_cleanup.apps.CleanupConfig",
 ]
 
 MIDDLEWARE = [
