@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.db.models import Manager
+from django.utils.text import slugify
 from .managers import SoftDeletionManager
 
 
@@ -55,6 +56,32 @@ class TimeStampModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+class SlugModel(models.Model):
+    slug = models.SlugField(
+        max_length=100,
+        unique=True,
+        db_index=True,
+        editable=False,
+    )
+
+    class Meta:
+        abstract = True
+
+    def generate_unique_slug(self, base_text: str) -> str:
+        slug_base = slugify(base_text)[:90]
+        if not slug_base:
+            slug_base = str(self.id)[:8]
+
+        slug = slug_base
+        counter = 1
+
+        while self.__class__.objects.filter(slug=slug).exclude(id=self.id).exists():
+            slug = f"{slug_base}-{counter}"
+            counter += 1
+
+        return slug
 
 
 class BaseModel(

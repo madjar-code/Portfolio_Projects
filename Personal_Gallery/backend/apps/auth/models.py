@@ -3,12 +3,13 @@ from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from apps.common.mixins.models import BaseModel
+from apps.common.mixins.models import BaseModel, SlugModel
 from .managers import CustomUserManager
 
 
 class CustomUser(
     BaseModel,
+    SlugModel,
     AbstractBaseUser,
     PermissionsMixin,
 ):
@@ -73,11 +74,18 @@ class CustomUser(
             models.Index(fields=["email"]),
             models.Index(fields=["oauth_provider", "oauth_id"]),
             models.Index(fields=["is_active"]),
+            models.Index(fields=["slug"]),
         ]
 
     def __str__(self) -> str:
         """String representation of the user."""
         return self.email
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_text = self.name or self.email.split('@')[0]
+            self.slug = self.generate_unique_slug(base_text)
+        super().save(*args, **kwargs)
 
     def is_email_user(self) -> bool:
         """
