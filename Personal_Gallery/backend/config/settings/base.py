@@ -135,7 +135,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%SZ",
-    "EXCEPTION_HANDLER": "rest_framework.views.exception_handler",
+    "EXCEPTION_HANDLER": "apps.common.exceptions.handler.custom_exception_handler",
 }
 
 # JWT Configuration
@@ -223,3 +223,8 @@ Get your token from `/api/auth/jwt/create/` endpoint.
 API_TERMS_OF_SERVICE = "https://www.google.com/policies/terms/"
 API_CONTACT_EMAIL = "contact@personalgallery.local"
 API_LICENSE_NAME = "MIT License"
+
+# Photo Configuration
+MAX_PHOTOS_PER_ENTRY = 50
+MAX_PHOTO_SIZE_MB = 10
+ALLOWED_PHOTO_FORMATS = "jpg,jpeg,png,webp"
