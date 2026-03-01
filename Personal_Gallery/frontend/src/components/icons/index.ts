@@ -1,0 +1,2 @@
+export { LogoutIcon } from './LogoutIcon'
+
