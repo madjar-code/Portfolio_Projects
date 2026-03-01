@@ -77,27 +77,40 @@ The project is organized as a classic Django monolith with modular structure and
 - `auth` — authentication and user management (OAuth, Email/Password, password recovery)
 - `photos` — Entry / Photo / gallery entities
 
-Basic template for each application structure:
+### Current Structure (photos app)
 
 ```
-app/
+photos/
   api/
-    serializers/
-    views/
-    urls.py
-  models/
-  services/
-  repositories/
-  exceptions/
-  enums/
-  utils/
+    serializers.py    # All serializers in one file
+    views.py          # All views in one file
+    permissions.py    # Custom permission classes
+    urls.py           # URL routing
+  models.py           # Entry and Photo models
+  exceptions.py       # Custom exceptions
+  migrations/
+  tests/
 ```
 
-Advantages:
+**Note:** Currently using single files for simplicity. As the application grows, these can be split into directories:
+- `serializers/` folder with multiple files
+- `views/` folder with multiple files
+- `models/` folder with multiple files
 
-- clear layer separation
-- simplified maintenance
-- possibility of gradual architecture evolution
+### Planned Extensions
+
+The following layers are planned for future implementation:
+- `services/` — business logic layer
+- `repositories/` — data access abstraction
+- `utils/` — helper functions
+- `enums/` — enumeration types
+
+Advantages of this approach:
+
+- **Start simple** - single files for small codebase
+- **Clear layer separation** - API, models, exceptions
+- **Easy to refactor** - can split into directories when needed
+- **Gradual evolution** - add services/repositories as complexity grows
 
 ---
 

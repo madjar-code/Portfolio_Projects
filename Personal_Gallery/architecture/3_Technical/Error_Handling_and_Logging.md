@@ -2,11 +2,11 @@
 
 ## Overview
 
-The error handling and logging system in Photos API provides:
-- Unified error response format
+The error handling and logging system provides:
+- Unified error response format across all API endpoints
 - Centralized exception handling
-- Systematic logging of all operations
-- Detailed information for debugging
+- Systematic logging of operations and errors
+- Clear separation between expected and unexpected errors
 
 ---
 
@@ -17,14 +17,14 @@ The error handling and logging system in Photos API provides:
 
 ### Functionality
 
-Custom exception handler processes:
+The custom exception handler processes:
 1. **Standard DRF exceptions** (ValidationError, NotFound, PermissionDenied)
-2. **Custom application exceptions** (EntryNotFoundError, PhotoNotFoundError, etc.)
+2. **Custom application exceptions** (PhotosAPIException and subclasses)
 3. **Unexpected exceptions** (returns 500 Internal Server Error)
 
 ### Response Format
 
-All errors are returned in a unified format:
+All errors return a unified JSON structure:
 
 ```json
 {
@@ -37,17 +37,17 @@ All errors are returned in a unified format:
 }
 ```
 
-### Handler Logging
+### Logging Strategy
 
-- **ERROR level** - for all DRF exceptions and custom PhotosError
-- **WARNING level** - for NotFound exceptions (EntryNotFoundError, PhotoNotFoundError)
-- **CRITICAL level** - for unexpected exceptions
+- **WARNING level** - for validation errors and expected business logic errors
+- **ERROR level** - for permission denied and not found errors
+- **CRITICAL level** - for unexpected system errors
 
-Each log entry contains:
+Each log entry includes:
 - View class name
-- User ID (or "Anonymous")
+- User identification
 - HTTP method and path
-- Full traceback (exc_info=True)
+- Full traceback for debugging (when applicable)
 
 ---
 
@@ -59,15 +59,15 @@ Each log entry contains:
 ### Exception Hierarchy
 
 ```
-PhotosError (base class)
-├── EntryNotFoundError
-├── PhotoNotFoundError
+PhotosAPIException (base class, inherits from DRF's APIException)
 ├── MaxPhotosExceededError
 ├── InvalidPhotoFormatError
 └── PhotoSizeTooLargeError
 ```
 
-### Usage
+**Note:** `NotFound` errors (404) are handled automatically by DRF's generic views and don't require custom exceptions.
+
+### Usage Examples
 
 **In serializers:**
 ```python
@@ -76,13 +76,9 @@ if value.size > max_size_mb * 1024 * 1024:
 
 if ext not in allowed_formats:
     raise InvalidPhotoFormatError(f"Format {ext} not allowed")
-```
 
-**In views:**
-```python
-except Entry.DoesNotExist:
-    logger.warning(f"User {self.request.user.id} tried to access entry {entry_id}")
-    raise EntryNotFoundError("Entry not found")
+if photo_count >= max_photos:
+    raise MaxPhotosExceededError(f"Entry already has {max_photos} photos")
 ```
 
 ---
@@ -91,7 +87,7 @@ except Entry.DoesNotExist:
 
 ### Logger Configuration
 
-Each view module has its own logger:
+Each module uses Python's standard logging:
 ```python
 import logging
 logger = logging.getLogger(__name__)
@@ -99,299 +95,109 @@ logger = logging.getLogger(__name__)
 
 ### Logging Levels
 
-**INFO** - Successful operations:
-- List requests
-- Resource creation
-- Resource updates
-- Resource deletion
+**INFO** - Successful operations and normal flow
+**WARNING** - Expected errors (validation, business rules)
+**ERROR** - Permission and access errors
+**CRITICAL** - Unexpected system errors
 
-**WARNING** - Expected errors:
-- Attempt to access non-existent resource
-- Attempt to access another user's resource
+### General Logging Patterns
 
-**ERROR** - Unexpected errors:
-- Validation errors
-- Business logic errors
-
-**CRITICAL** - Critical errors:
-- Unhandled exceptions
-- System errors
-
-### Logging Patterns
-
-**List operations:**
+Log important operations with context:
 ```python
-logger.info(f"User {request.user.id} requesting entry list")
-# ... operation ...
-logger.info(f"User {request.user.id} retrieved {len(entries)} entries")
-```
+# Successful operations
+logger.info(f"User {user_id} performed {operation}")
 
-**Create operations:**
-```python
-logger.info(f"User {request.user.id} creating new entry")
-# ... operation ...
-logger.info(f"User {request.user.id} created entry {entry.id}")
-```
+# Expected errors
+logger.warning(f"Validation failed: {error_details}")
 
-**Update operations:**
-```python
-logger.info(f"User {request.user.id} updating entry {entry_id}")
-# ... operation ...
-logger.info(f"User {request.user.id} updated entry {entry_id}")
-```
-
-**Delete operations:**
-```python
-logger.info(f"User {request.user.id} deleting entry {entry_id}")
-# ... operation ...
-logger.info(f"User {request.user.id} deleted entry {entry_id} with {photo_count} photos")
-```
-
-**Error scenarios:**
-```python
-logger.warning(f"User {self.request.user.id} tried to access non-existent entry {entry_id}")
+# Unexpected errors
+logger.error(f"Unexpected error in {view_name}", exc_info=True)
 ```
 
 ---
 
-## Error Scenarios by Endpoint
+## API Endpoints Overview
 
 ### Entry Endpoints
 
-#### 1. GET /api/photos/entries/ - List Entries
-
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} requesting entry list` → `INFO: User {id} retrieved {count} entries`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-  - Code: `not_authenticated`
-  - Logging: Handled by DRF middleware
-
----
-
-#### 2. POST /api/photos/entries/create/ - Create Entry
-
-**Success:**
-- Status: 201 Created
-- Logging: `INFO: User {id} creating new entry` → `INFO: User {id} created entry {entry_id}`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-  - Code: `not_authenticated`
-- **400 Bad Request** - Missing title
-  - Code: `validation_error`
-  - Logging: `ERROR: API Error in EntryCreateView: ValidationError`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "This field is required.",
-        "code": "validation_error",
-        "status": 400,
-        "details": {"title": ["This field is required."]}
-      }
-    }
-    ```
-- **400 Bad Request** - Title too long (>255 chars)
-  - Code: `validation_error`
-  - Logging: `ERROR: API Error in EntryCreateView: ValidationError`
-
----
-
-#### 3. GET /api/photos/entries/{id}/ - Get Entry Details
-
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} requesting entry {entry_id}`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Entry doesn't exist
-  - Code: `entry_not_found`
-  - Logging: `WARNING: User {id} tried to access non-existent entry {entry_id}`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "Entry not found",
-        "code": "entry_not_found",
-        "status": 404,
-        "details": {}
-      }
-    }
-    ```
-- **403 Forbidden** - Entry belongs to another user
-  - Code: `permission_denied`
-  - Logging: `ERROR: API Error in EntryDetailView: PermissionDenied`
-
----
-
-#### 4. PATCH /api/photos/entries/{id}/update/ - Update Entry
-
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} updating entry {entry_id}` → `INFO: User {id} updated entry {entry_id}`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Entry doesn't exist
-  - Logging: `WARNING: User {id} tried to update non-existent entry {entry_id}`
-- **403 Forbidden** - Entry belongs to another user
-- **400 Bad Request** - Invalid data
-
----
-
-#### 5. DELETE /api/photos/entries/{id}/delete/ - Delete Entry
-
-**Success:**
-- Status: 204 No Content
-- Logging: `INFO: User {id} deleting entry {entry_id}` → `INFO: User {id} deleted entry {entry_id} with {count} photos`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Entry doesn't exist
-  - Logging: `WARNING: User {id} tried to delete non-existent entry {entry_id}`
-- **403 Forbidden** - Entry belongs to another user
-
----
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/entries/` | List all entries | Optional |
+| POST | `/api/entries/create/` | Create new entry | Required |
+| GET | `/api/entries/<slug>/` | Get entry details | Optional |
+| PATCH | `/api/entries/<slug>/update/` | Update entry | Required (Owner) |
+| DELETE | `/api/entries/<slug>/delete/` | Delete entry (soft) | Required (Owner) |
 
 ### Photo Endpoints
 
-#### 6. GET /api/photos/photos/ - List Photos
-
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} requesting photo list` → `INFO: User {id} retrieved {count} photos`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/api/photos/` | List user's photos | Required |
+| POST | `/api/photos/create/` | Upload photo | Required |
+| GET | `/api/photos/<uuid>/` | Get photo details | Required (Owner) |
+| PATCH | `/api/photos/<uuid>/update/` | Move photo to another entry | Required (Owner) |
+| DELETE | `/api/photos/<uuid>/delete/` | Delete photo (soft) | Required (Owner) |
 
 ---
 
-#### 7. POST /api/photos/entries/{entry_id}/photos/create/ - Create Photo
+## Common Error Scenarios
 
-**Success:**
-- Status: 201 Created
-- Logging: `INFO: User {id} creating new photo for entry {entry_id}` → `INFO: User {id} created photo {photo_id} in entry {entry_id}`
+### Authentication Errors
+- **401 Unauthorized** - Missing or invalid authentication token
+  - Code: `not_authenticated`
+  - Returned by DRF middleware
 
-**Request:**
-- Content-Type: `multipart/form-data`
-- Path parameter: `entry_id` (UUID)
-- Body: `file` (image file)
+### Permission Errors
+- **403 Forbidden** - User doesn't own the resource
+  - Code: `permission_denied`
+  - Logged at ERROR level
 
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **400 Bad Request** - Missing required fields
+### Validation Errors
+- **400 Bad Request** - Invalid input data
   - Code: `validation_error`
-  - Logging: `ERROR: API Error in PhotoCreateView: ValidationError`
-- **400 Bad Request** - Entry doesn't belong to user
-  - Code: `validation_error`
-  - Logging: `ERROR: API Error in PhotoCreateView: ValidationError`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "Entry does not belong to you",
-        "code": "validation_error",
-        "status": 400,
-        "details": {"entry": ["Entry does not belong to you"]}
-      }
-    }
-    ```
-- **400 Bad Request** - Max photos exceeded
-  - Code: `max_photos_exceeded`
-  - Logging: `WARNING: Max photos exceeded - User {id} in PhotoCreateView`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "Entry already has maximum 50 photos",
-        "code": "max_photos_exceeded",
-        "status": 400,
-        "details": {}
-      }
-    }
-    ```
-- **400 Bad Request** - Photo size too large
-  - Code: `photo_size_too_large`
-  - Logging: `WARNING: Photo size too large - User {id} in PhotoCreateView`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "Photo exceeds 10MB limit",
-        "code": "photo_size_too_large",
-        "status": 400,
-        "details": {}
-      }
-    }
-    ```
-- **400 Bad Request** - Invalid photo format
-  - Code: `invalid_photo_format`
-  - Logging: `WARNING: Invalid photo format - User {id} in PhotoCreateView`
-  - Response:
-    ```json
-    {
-      "error": {
-        "message": "Format gif not allowed. Allowed: jpg, jpeg, png, webp",
-        "code": "invalid_photo_format",
-        "status": 400,
-        "details": {}
-      }
-    }
-    ```
+  - Logged at WARNING level
+  - Details field contains specific validation errors
 
----
+### Not Found Errors
+- **404 Not Found** - Resource doesn't exist
+  - Code: `not_found`
+  - Handled automatically by DRF generic views
+  - Logged at ERROR level
 
-#### 8. GET /api/photos/photos/{id}/ - Get Photo Details
+### Photo-Specific Errors
 
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} requesting photo {photo_id}`
+**Max Photos Exceeded:**
+```json
+{
+  "error": {
+    "message": "Entry already has 50 photos. Maximum allowed is 50.",
+    "code": "max_photos_exceeded",
+    "status": 400
+  }
+}
+```
 
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Photo doesn't exist
-  - Code: `photo_not_found`
-  - Logging: `WARNING: User {id} tried to access non-existent photo {photo_id}`
-- **403 Forbidden** - Photo belongs to another user
+**Photo Size Too Large:**
+```json
+{
+  "error": {
+    "message": "Photo size (12.5MB) exceeds maximum allowed size of 10MB",
+    "code": "photo_size_too_large",
+    "status": 400
+  }
+}
+```
 
----
-
-#### 9. PATCH /api/photos/photos/{id}/update/ - Update Photo
-
-**Success:**
-- Status: 200 OK
-- Logging: `INFO: User {id} updating photo {photo_id}` → `INFO: User {id} updated photo {photo_id}`
-
-**Request:**
-- Content-Type: `multipart/form-data`
-- Body: `file` (new image file)
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Photo doesn't exist
-  - Logging: `WARNING: User {id} tried to update non-existent photo {photo_id}`
-- **403 Forbidden** - Photo belongs to another user
-- **400 Bad Request** - Photo size too large
-- **400 Bad Request** - Invalid photo format
-- **400 Bad Request** - Missing file field
-
----
-
-#### 10. DELETE /api/photos/photos/{id}/delete/ - Delete Photo
-
-**Success:**
-- Status: 204 No Content
-- Logging: `INFO: User {id} deleting photo {photo_id}` → `INFO: User {id} deleted photo {photo_id} from entry {entry_id}`
-
-**Errors:**
-- **401 Unauthorized** - No authentication token
-- **404 Not Found** - Photo doesn't exist
-  - Logging: `WARNING: User {id} tried to delete non-existent photo {photo_id}`
-- **403 Forbidden** - Photo belongs to another user
+**Invalid Photo Format:**
+```json
+{
+  "error": {
+    "message": "Invalid photo format 'GIF'. Allowed formats: JPEG, PNG, WEBP",
+    "code": "invalid_photo_format",
+    "status": 400
+  }
+}
+```
 
 ---
 
@@ -399,11 +205,10 @@ logger.warning(f"User {self.request.user.id} tried to access non-existent entry 
 
 | Code | HTTP Status | Description | Logging Level |
 |------|-------------|-------------|---------------|
-| `not_authenticated` | 401 | Missing or invalid authentication | INFO (middleware) |
+| `not_authenticated` | 401 | Missing or invalid authentication | INFO |
 | `permission_denied` | 403 | User doesn't have permission | ERROR |
-| `validation_error` | 400 | Invalid input data | ERROR |
-| `entry_not_found` | 404 | Entry doesn't exist | WARNING |
-| `photo_not_found` | 404 | Photo doesn't exist | WARNING |
+| `validation_error` | 400 | Invalid input data | WARNING |
+| `not_found` | 404 | Resource doesn't exist | ERROR |
 | `max_photos_exceeded` | 400 | Entry has reached photo limit | WARNING |
 | `photo_size_too_large` | 400 | Photo file exceeds size limit | WARNING |
 | `invalid_photo_format` | 400 | Photo format not allowed | WARNING |
@@ -413,15 +218,15 @@ logger.warning(f"User {self.request.user.id} tried to access non-existent entry 
 
 ## Configuration
 
-### Settings (base.py)
+### Exception Handler (settings/base.py)
 ```python
 REST_FRAMEWORK = {
-    ...
     "EXCEPTION_HANDLER": "apps.common.exceptions.handler.custom_exception_handler",
+    # ... other settings
 }
 ```
 
-### Logging (dev.py)
+### Logging Configuration (settings/dev.py)
 ```python
 LOGGING = {
     "version": 1,
@@ -438,22 +243,26 @@ LOGGING = {
 }
 ```
 
-### Photo Settings
+### Photo Validation Settings
 ```python
+# Maximum photos per entry
 MAX_PHOTOS_PER_ENTRY = 50
+
+# Maximum file size in MB
 MAX_PHOTO_SIZE_MB = 10
-ALLOWED_PHOTO_FORMATS = "jpg,jpeg,png,webp"
+
+# Allowed image formats
+ALLOWED_PHOTO_FORMATS = ["JPEG", "PNG", "WEBP"]
 ```
 
 ---
 
 ## Best Practices
 
-1. **Always log operation start and end** for performance tracking
-2. **Use WARNING for expected errors** (NotFound, PermissionDenied)
-3. **Use ERROR for unexpected errors** (ValidationError, business logic)
-4. **Include context in logs** (user_id, resource_id, operation)
-5. **Use custom exceptions** instead of generic ValidationError where possible
-6. **Unified response format** for all errors
-7. **Detailed information in details** for frontend debugging
+1. **Use appropriate logging levels** - WARNING for expected errors, ERROR for unexpected
+2. **Include context in logs** - user ID, resource ID, operation type
+3. **Use custom exceptions** for domain-specific errors
+4. **Maintain unified response format** across all endpoints
+5. **Provide helpful error messages** for debugging and user feedback
+6. **Log with exc_info=True** for unexpected errors to capture full traceback
 
