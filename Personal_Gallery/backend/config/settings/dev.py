@@ -63,6 +63,13 @@ LOGGING = {
         "handlers": ["console"],
         "level": "DEBUG",
     },
+    "loggers": {
+        "PIL": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+    },
 }
 
 # API Documentation - Development
@@ -70,29 +77,6 @@ API_DESCRIPTION = """
 **DEVELOPMENT ENVIRONMENT**
 
 Personal Gallery API - Educational project for managing personal photo gallery.
-
-## Features
-- **Authentication**: Email/Password and Google OAuth
-- **JWT Tokens**: Access and refresh tokens
-- **Photo Management**: Upload, view, and manage photos
-- **Entries**: Organize photos into entries/albums
-
-## Development Notes
-- Email backend: Console (check terminal for emails)
-- Database: SQLite
-- CORS: Enabled for all origins
-- Debug mode: ON
-
-## Authentication
-Use the **Authorize** button to add your JWT token:
-```
-Bearer <your_access_token>
-```
-
-Get your token from `/api/auth/jwt/create/` endpoint.
-
-## Quick Test User
-You can create a test user via `/api/auth/users/` endpoint.
 """
 
 # Swagger settings for development
