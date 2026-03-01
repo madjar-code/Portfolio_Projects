@@ -23,6 +23,7 @@ urlpatterns = [
 
     # API
     path("api/auth/", include("apps.auth.api.urls")),
+    path("api/", include("apps.photos.api.urls")),
 
     # API Documentation
     re_path(
