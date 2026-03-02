@@ -72,6 +72,9 @@ LOGGING = {
     },
 }
 
+# Email Configuration for Development
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 # API Documentation - Development
 API_DESCRIPTION = """
 **DEVELOPMENT ENVIRONMENT**

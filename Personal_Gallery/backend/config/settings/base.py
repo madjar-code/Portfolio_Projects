@@ -164,6 +164,9 @@ DJOSER = {
     "PASSWORD_CHANGED_EMAIL_CONFIRMATION": True,
     "PASSWORD_RESET_CONFIRM_URL": "auth/password-reset/{uid}/{token}",
     "ACTIVATION_URL": "auth/activate/{uid}/{token}",
+    "EMAIL_FRONTEND_DOMAIN": os.getenv("FRONTEND_DOMAIN", "localhost:5173"),
+    "EMAIL_FRONTEND_SITE_NAME": "Personal Gallery",
+    "EMAIL_FRONTEND_PROTOCOL": os.getenv("FRONTEND_PROTOCOL", "http"),
     "SERIALIZERS": {
         "user_create": "apps.auth.api.serializers.CustomUserCreateSerializer",
         "user": "apps.auth.api.serializers.CustomUserSerializer",
@@ -173,12 +176,8 @@ DJOSER = {
         "user": ["rest_framework.permissions.IsAuthenticated"],
         "user_list": ["rest_framework.permissions.IsAdminUser"],
     },
-    "EMAIL": {
-        "activation": "apps.auth.emails.ActivationEmail",
-        "confirmation": "apps.auth.emails.ConfirmationEmail",
-        "password_reset": "apps.auth.emails.PasswordResetEmail",
-    },
 }
+
 
 # CORS Configuration
 CORS_ALLOWED_ORIGINS = [
