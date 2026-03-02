@@ -4,12 +4,16 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { LoginPage } from './pages/LoginPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { EntryDetailPage } from './pages/EntryDetailPage'
+import { RegisterPage } from './pages/RegisterPage'
+import { ActivationPage } from './pages/ActivationPage'
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/auth/activate/:uid/:token" element={<ActivationPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route
             path="/gallery"

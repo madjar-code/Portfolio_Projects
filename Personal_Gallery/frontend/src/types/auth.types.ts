@@ -31,3 +31,21 @@ export interface AuthContextType extends AuthState {
   logout: () => void
   checkAuth: () => Promise<void>
 }
+
+export interface RegisterRequest {
+  email: string
+  name: string
+  password: string
+  re_password: string
+}
+
+export interface RegisterResponse {
+  id: string
+  email: string
+  name: string
+}
+
+export interface ActivationRequest {
+  uid: string
+  token: string
+}

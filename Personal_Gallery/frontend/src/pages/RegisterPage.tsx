@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import styled from 'styled-components'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
-import { useAuth } from '../contexts/AuthContext'
+import React, { useState } from "react"
+import styled from "styled-components"
+import { Link as RouterLink } from "react-router-dom"
+import { authService } from "../services/auth.service"
 
 const Container = styled.div`
   min-height: 100vh;
@@ -119,6 +119,23 @@ const ErrorMessage = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.md};
 `
 
+const SuccessMessage = styled.div`
+  padding: ${({ theme }) => theme.spacing.md};
+  background: rgba(52, 168, 83, 0.1);
+  border: 1px solid ${({ theme }) => theme.colors.secondary};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  color: ${({ theme }) => theme.colors.secondary};
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+`
+
+const SuccessTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: ${({ theme }) => theme.spacing.sm};
+`
+
 const LinkText = styled.p`
   text-align: center;
   font-size: 14px;
@@ -136,48 +153,96 @@ const Link = styled(RouterLink)`
   }
 `
 
-export const LoginPage: React.FC = () => {
-  const navigate = useNavigate()
-  const { login } = useAuth()
+export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [rePassword, setRePassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
 
-    if (!email || !password) {
+    if (!email || !name || !password || !rePassword) {
       setError('Please fill in all fields')
       return
     }
 
+    if (password !== rePassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    // if (password.length < 8) {
+    //   setError('Password must be at least 8 characters')
+    //   return
+    // }
+
     try {
       setLoading(true)
-      await login(email, password)
-      navigate('/gallery')
+      await authService.register({
+        email,
+        name,
+        password,
+        re_password: rePassword,
+      })
+      setSuccess(true)
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.error?.message ||
-        err.response?.data?.detail ||
-        'Invalid email or password'
+        err.response?.data?.email?.[0] ||
+        err.response?.data?.password?.[0] ||
+        'Registration failed. Please try again.'
       setError(errorMessage)
-      console.error('Login error:', err)
+      console.error('Registration error:', err)
     } finally {
       setLoading(false)
     }
   }
 
+  if (success) {
+    return (
+      <Container>
+        <Card>
+          <SuccessMessage>
+            <SuccessTitle>✓ Registration Successful!</SuccessTitle>
+            <p>
+              We've sent an activation link to <strong>{email}</strong>.
+              Please check your email and click the link to activate your account.
+            </p>
+          </SuccessMessage>
+          <LinkText>
+            <Link to="/login">Go to Login</Link>
+          </LinkText>
+        </Card>
+      </Container>
+    )
+  }
   return (
     <Container>
       <Card>
-        <Title>Welcome Back</Title>
-        <Subtitle>Sign in to your account</Subtitle>
+        <Title>Create Account</Title>
+        <Subtitle>Sign up to get started</Subtitle>
 
         {error && <ErrorMessage>{error}</ErrorMessage>}
 
         <Form onSubmit={handleSubmit}>
+          <FormGroup>
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              type="text"
+              placeholder="John Doe"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              disabled={loading}
+              autoComplete="name"
+            />
+          </FormGroup>
+
           <FormGroup>
             <Label htmlFor="email">Email</Label>
             <Input
@@ -196,20 +261,34 @@ export const LoginPage: React.FC = () => {
             <Input
               id="password"
               type="password"
-              placeholder="12345"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
-              autoComplete="current-password"
+              autoComplete="new-password"
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="rePassword">Confirm Password</Label>
+            <Input
+              id="rePassword"
+              type="password"
+              placeholder="••••••••"
+              value={rePassword}
+              onChange={(e) => setRePassword(e.target.value)}
+              disabled={loading}
+              autoComplete="new-password"
             />
           </FormGroup>
 
           <Button type="submit" disabled={loading}>
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </Form>
+
         <LinkText>
-          Don't have an account? <Link to="/register">Sign up</Link>
+          Already have an account? <Link to="/login">Sign in</Link>
         </LinkText>
       </Card>
     </Container>

@@ -1,5 +1,11 @@
 import { api } from "./api"
-import type { LoginResponse, User } from "../types/auth.types"
+import type {
+  RegisterResponse,
+  ActivationRequest,
+  LoginResponse,
+  RegisterRequest,
+  User
+} from "../types/auth.types"
 
 const TOKEN_KEY = "access_token"
 const REFRESH_TOKEN_KEY = "refresh_token"
@@ -20,6 +26,19 @@ export const authService = {
   logout: () => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
+  },
+
+  register: async (data: RegisterRequest) => {
+    const response = await api.post<RegisterResponse>('/auth/users/', data)
+    return response.data
+  },
+
+  activateAccount: async (data: ActivationRequest) => {
+    await api.post('/auth/users/activation/', data)
+  },
+
+  resendActivation: async (email: string) => {
+    await api.post('/auth/users/resend_activation/', { email })
   },
 
   getCurrentUser: () => api.get<User>('/auth/users/me/'),
