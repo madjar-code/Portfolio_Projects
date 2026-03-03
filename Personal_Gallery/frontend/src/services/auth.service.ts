@@ -4,7 +4,8 @@ import type {
   ActivationRequest,
   LoginResponse,
   RegisterRequest,
-  User
+  User,
+  GoogleOAuthResponse,
 } from "../types/auth.types"
 
 const TOKEN_KEY = "access_token"
@@ -26,6 +27,17 @@ export const authService = {
   logout: () => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
+  },
+
+  googleLogin: async (googleToken: string) => {
+    const response = await api.post<GoogleOAuthResponse>('/auth/google/token/', {
+      token: googleToken
+    })
+
+    localStorage.setItem(TOKEN_KEY, response.data.access)
+    localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refresh)
+
+    return response.data
   },
 
   register: async (data: RegisterRequest) => {

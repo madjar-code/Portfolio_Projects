@@ -49,3 +49,14 @@ export interface ActivationRequest {
   uid: string
   token: string
 }
+
+export interface GoogleOAuthRequest {
+  token: string  // Google ID Token
+}
+
+export interface GoogleOAuthResponse {
+  access: string
+  refresh: string
+  user: User
+  is_new_user: boolean
+}

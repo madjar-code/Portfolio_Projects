@@ -2,6 +2,9 @@ import React, { useState } from "react"
 import styled from "styled-components"
 import { Link as RouterLink } from "react-router-dom"
 import { authService } from "../services/auth.service"
+import { GoogleLogin } from '@react-oauth/google'
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "../contexts/AuthContext"
 
 const Container = styled.div`
   min-height: 100vh;
@@ -153,7 +156,29 @@ const Link = styled(RouterLink)`
   }
 `
 
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: ${({ theme }) => theme.spacing.lg} 0;
+  color: ${({ theme }) => theme.colors.textLight};
+  font-size: 14px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  }
+
+  span {
+    padding: 0 ${({ theme }) => theme.spacing.md};
+  }
+`
+
 export const RegisterPage: React.FC = () => {
+  const navigate = useNavigate()
+  const { checkAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
@@ -161,6 +186,34 @@ export const RegisterPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const result = await authService.googleLogin(credentialResponse.credential)
+      await checkAuth()
+
+      if (result.is_new_user) {
+        console.log('Welcome, new user!')
+      }
+
+      navigate('/gallery')
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.detail ||
+        'Google sign-up failed. Please try again.'
+      setError(errorMessage)
+      console.error('Google signup error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setError('Google sign-up was cancelled or failed')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -286,6 +339,20 @@ export const RegisterPage: React.FC = () => {
             {loading ? 'Creating account...' : 'Sign Up'}
           </Button>
         </Form>
+
+        <Divider>
+          <span>OR</span>
+        </Divider>
+
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          useOneTap={false}
+          theme='outline'
+          size='large'
+          text='signup_with'
+          shape='rectangular'
+        />
 
         <LinkText>
           Already have an account? <Link to="/login">Sign in</Link>

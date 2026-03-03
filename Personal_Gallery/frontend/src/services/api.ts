@@ -27,7 +27,12 @@ api.interceptors.response.use(
 
     // Don't intercept 401 errors from login endpoint
     // This allows the login page to handle authentication errors properly
-    if (originalRequest.url?.includes('/auth/jwt/create/')) {
+    if (
+      originalRequest.url?.includes('/auth/jwt/create/') ||
+      originalRequest.url?.includes('/auth/jwt/refresh/') ||
+      originalRequest.url?.includes('/auth/google/token/') ||
+      originalRequest.url?.includes('/auth/google/code/')
+    ) {
       return Promise.reject(error)
     }
 

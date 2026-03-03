@@ -2,6 +2,8 @@ import React, { useState } from 'react'
 import styled from 'styled-components'
 import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { GoogleLogin } from '@react-oauth/google'
+import { authService } from '../services/auth.service'
 
 const Container = styled.div`
   min-height: 100vh;
@@ -136,13 +138,61 @@ const Link = styled(RouterLink)`
   }
 `
 
+const Divider = styled.div`
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: ${({ theme }) => theme.spacing.lg} 0;
+  color: ${({ theme }) => theme.colors.textLight};
+  font-size: 14px;
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  }
+
+  span {
+    padding: 0 ${({ theme }) => theme.spacing.md};
+  }
+`
+
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { login, checkAuth } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const result = await authService.googleLogin(credentialResponse.credential)
+      if (!result.is_new_user) {
+        console.log('Welcome back, existing user!')
+      }
+
+      await checkAuth()
+
+      navigate('/gallery')
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.detail ||
+        'Google sign-in failed. Please try again.'
+      setError(errorMessage)
+      console.error('Google login error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setError('Google sign-in was cancelled or failed')
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -208,6 +258,18 @@ export const LoginPage: React.FC = () => {
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
         </Form>
+        <Divider>
+          <span>OR</span>
+        </Divider>
+        <GoogleLogin
+          onSuccess={handleGoogleSuccess}
+          onError={handleGoogleError}
+          useOneTap={false}
+          theme='outline'
+          size='large'
+          text='signin_with'
+          shape='rectangular'
+        />
         <LinkText>
           Don't have an account? <Link to="/register">Sign up</Link>
         </LinkText>
