@@ -5,9 +5,8 @@ import { photosService } from '../services/photos.service'
 import type { EntryDetail } from '../types/gallery.types'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ConfirmModal } from '../components/common/ConfirmModal'
-import { useAuth } from '../contexts/AuthContext'
-import { LogoutIcon } from '../components/icons'
 import { PhotoModal } from '../components/gallery/PhotoModal'
+import { EditIcon, TrashIcon } from '../components/icons'
 
 
 const Container = styled.div`
@@ -43,27 +42,61 @@ const BackButton = styled.button`
   }
 `
 
-const LogoutButton = styled.button`
+const ActionsContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.sm};
+`
+
+const ActionButton = styled.button<{ variant?: 'danger' }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  gap: ${({ theme }) => theme.spacing.xs};
+  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  background: transparent;
-  color: ${({ theme }) => theme.colors.textLight};
+  font-size: 14px;
+  font-weight: 500;
   transition: all 0.2s;
-  cursor: pointer;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.border};
-    color: ${({ theme }) => theme.colors.text};
-  }
+  
+  ${({ variant, theme }) =>
+    variant === 'danger'
+      ? `
+    background: transparent;
+    color: ${theme.colors.danger};
+    border: 1px solid ${theme.colors.danger};
+    
+    &:hover {
+      background: ${theme.colors.danger};
+      color: white;
+    }
+  `
+      : `
+    background: ${theme.colors.backgroundDark};
+    color: ${theme.colors.text};
+    
+    &:hover {
+      background: ${theme.colors.border};
+    }
+  `}
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    width: 44px;
-    height: 44px;
+    padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
   }
+`
+
+const ButtonText = styled.span`
+  display: none;
+
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    display: inline;
+  }
+`
+
+const ButtonIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `
 
 const Header = styled.div`
@@ -71,12 +104,12 @@ const Header = styled.div`
 `
 
 const Title = styled.h1`
-  font-size: 24px;
+  font-size: 20px;
   color: ${({ theme }) => theme.colors.text};
   margin-bottom: ${({ theme }) => theme.spacing.sm};
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    font-size: 32px;
+    font-size: 28px;
   }
 `
 
@@ -113,9 +146,10 @@ const ErrorText = styled.p`
 export const EntryDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
-  const { logout } = useAuth()
   const [entry, setEntry] = useState<EntryDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const [entryDeleteModal, setEntryDeleteModal] = useState(false)
+  const [deletingEntry, setDeletingEntry] = useState(false)
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean
     photoId: string | null
@@ -188,9 +222,32 @@ export const EntryDetailPage: React.FC = () => {
     setDeleteModal({ isOpen: false, photoId: null })
   }
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
+  const handleEdit = () => {
+    navigate(`/gallery/${slug}/edit`)
+  }
+
+  const handleDeleteClick = () => {
+    setEntryDeleteModal(true)
+  }
+
+  const handleEntryDeleteConfirm = async () => {
+    if (!slug) return
+
+    try {
+      setDeletingEntry(true)
+      await photosService.deleteEntry(slug)
+      navigate('/gallery')
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error?.message || 'Failed to delete entry'
+      alert(errorMessage)
+      console.error(err)
+    } finally {
+      setDeletingEntry(false)
+    }
+  }
+
+  const handleEntryDeleteCancel = () => {
+    setEntryDeleteModal(false)
   }
 
   if (loading) {
@@ -215,9 +272,20 @@ export const EntryDetailPage: React.FC = () => {
         <BackButton onClick={() => navigate('/gallery')}>
           ← Back to Gallery
         </BackButton>
-        <LogoutButton onClick={handleLogout} title="Logout">
-          <LogoutIcon size={20} />
-        </LogoutButton>
+        <ActionsContainer>
+          <ActionButton onClick={handleEdit} title="Edit entry">
+            <ButtonIcon>
+              <EditIcon size={16}/>
+            </ButtonIcon>
+            <ButtonText>Edit</ButtonText>
+          </ActionButton>
+          <ActionButton variant="danger" onClick={handleDeleteClick} title="Delete entry">
+            <ButtonIcon>
+              <TrashIcon size={16}/>
+            </ButtonIcon>
+            <ButtonText>Delete</ButtonText>
+          </ActionButton>
+        </ActionsContainer>
       </TopBar>
 
       <Header>
@@ -250,6 +318,15 @@ export const EntryDetailPage: React.FC = () => {
           currentIndex={modalState.currentIndex}
           onClose={handleModalClose}
           onNavigate={handleModalNavigate}
+        />
+      )}
+      {entryDeleteModal && (
+        <ConfirmModal
+          title="Delete Entry"
+          message="Are you sure you want to delete this entry? All photos will be deleted as well."
+          onConfirm={handleEntryDeleteConfirm}
+          onCancel={handleEntryDeleteCancel}
+          loading={deletingEntry}
         />
       )}
     </Container>
