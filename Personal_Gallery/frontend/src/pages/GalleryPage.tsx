@@ -169,6 +169,10 @@ export const GalleryPage: React.FC = () => {
     setDeleteModal({ isOpen: true, slug })
   }
 
+  const handleEditClick = (slug: string) => [
+    navigate(`/gallery/${slug}/edit`)
+  ]
+
   const handleDeleteConfirm = async () => {
     if (!deleteModal.slug) return
 
@@ -233,6 +237,7 @@ export const GalleryPage: React.FC = () => {
             <EntryListItem
               entry={entry}
               onClick={handleEntryClick}
+              onEdit={handleEditClick}
               onDelete={handleDeleteClick}
             />
             {index < entries.length - 1 && <Divider />}

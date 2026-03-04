@@ -6,6 +6,7 @@ import { GalleryPage } from './pages/GalleryPage'
 import { EntryDetailPage } from './pages/EntryDetailPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ActivationPage } from './pages/ActivationPage'
+import { EntryEditPage } from './pages/EntryEditPage'
 
 function App() {
   return (
@@ -28,6 +29,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <EntryDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/gallery/:slug/edit"
+            element={
+              <ProtectedRoute>
+                <EntryEditPage />
               </ProtectedRoute>
             }
           />
