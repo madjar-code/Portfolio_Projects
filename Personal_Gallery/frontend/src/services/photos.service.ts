@@ -13,6 +13,9 @@ export const photosService = {
   createEntry: (data: { title: string; description?: string }) =>
     api.post<Entry>(`/entries/create/`, data),
 
+  updateEntry: (slug: string, data: { title: string; description?: string }) =>
+    api.put<EntryDetail>(`/entries/${slug}/update/`, data),
+
   getPhotos: () =>
     api.get<Photo[]>(`/photos/`),
 
