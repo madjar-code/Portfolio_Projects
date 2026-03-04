@@ -10,6 +10,7 @@ from .views import (
     PhotoDetailView,
     PhotoUpdateView,
     PhotoDeleteView,
+    PhotoValidateView,
 )
 
 app_name = "photos"
@@ -25,6 +26,7 @@ urlpatterns = [
     # Photo endpoints
     path("photos/", PhotoListView.as_view(), name="photo-list"),
     path("photos/create/", PhotoCreateView.as_view(), name="photo-create"),
+    path("photos/validate/", PhotoValidateView.as_view(), name="photo-validate"),
     path("photos/<uuid:photo_id>/", PhotoDetailView.as_view(), name="photo-detail"),
     path("photos/<uuid:photo_id>/update/", PhotoUpdateView.as_view(), name="photo-update"),
     path("photos/<uuid:photo_id>/delete/", PhotoDeleteView.as_view(), name="photo-delete"),
