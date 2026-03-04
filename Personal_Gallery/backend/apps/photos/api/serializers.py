@@ -225,6 +225,10 @@ class PhotoSerializer(ModelSerializer):
 
         return value
 
+    def to_representation(self, instance):
+        """Return detailed representation after creation."""
+        return PhotoDetailSerializer(instance, context=self.context).data
+
 
 class PhotoUpdateSerializer(ModelSerializer):
     """Serializer for updating photo (moving to another entry)."""
