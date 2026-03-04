@@ -7,6 +7,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ConfirmModal } from '../components/common/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
 import { LogoutIcon } from '../components/icons'
+import { PhotoModal } from '../components/gallery/PhotoModal'
 
 
 const Container = styled.div`
@@ -119,6 +120,10 @@ export const EntryDetailPage: React.FC = () => {
     isOpen: boolean
     photoId: string | null
   }>({ isOpen: false, photoId: null })
+  const [modalState, setModalState] = useState<{
+    isOpen: boolean
+    currentIndex: number
+  }>({ isOpen: false, currentIndex: 0 })
 
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -144,12 +149,16 @@ export const EntryDetailPage: React.FC = () => {
   }, [slug])
 
   const handlePhotoClick = (photo: any) => {
-    console.log('Clicked photo:', photo.id)
-    // TODO: open photo in modal/lightbox
+    const index = entry!.photos.findIndex((p) => p.id === photo.id)
+    setModalState({ isOpen: true, currentIndex: index })
   }
 
-  const handlePhotoDeleteClick = (photoId: string) => {
-    setDeleteModal({ isOpen: true, photoId })
+  const handleModalClose = () => {
+    setModalState({ isOpen: false, currentIndex: 0 })
+  }
+
+  const handleModalNavigate = (index: number) => {
+    setModalState({ isOpen: true, currentIndex: index })
   }
 
   const handlePhotoDeleteConfirm = async () => {
@@ -224,7 +233,6 @@ export const EntryDetailPage: React.FC = () => {
       <PhotoGrid
         photos={entry.photos}
         onPhotoClick={handlePhotoClick}
-        onPhotoDelete={handlePhotoDeleteClick}
       />
 
       {deleteModal.isOpen && (
@@ -234,6 +242,14 @@ export const EntryDetailPage: React.FC = () => {
           onConfirm={handlePhotoDeleteConfirm}
           onCancel={handlePhotoDeleteCancel}
           loading={deleting}
+        />
+      )}
+      {modalState.isOpen && (
+        <PhotoModal
+          photos={entry.photos}
+          currentIndex={modalState.currentIndex}
+          onClose={handleModalClose}
+          onNavigate={handleModalNavigate}
         />
       )}
     </Container>
