@@ -19,6 +19,7 @@ const Title = styled.h2`
   margin-bottom: ${({ theme }) => theme.spacing.xs};
   position: relative;
   display: inline-block;
+  cursor: pointer;
   
   &::after {
     content: '';
@@ -56,13 +57,11 @@ const ItemContainer = styled.div`
 
 const ItemContent = styled.div`
   flex: 1;
-  cursor: pointer;
 
   &:hover ${Title}::after {
     width: 100%;
   }
 `
-
 
 interface Props {
   entry: Entry
