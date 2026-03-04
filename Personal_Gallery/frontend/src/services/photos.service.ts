@@ -11,7 +11,7 @@ export const photosService = {
     api.get<EntryDetail>(`/entries/${slug}/`),
 
   createEntry: (data: { title: string; description?: string }) =>
-    api.post<Entry>(`/entries/create/`, data),
+    api.post<EntryDetail>(`/entries/create/`, data),
 
   updateEntry: (slug: string, data: { title: string; description?: string }) =>
     api.put<EntryDetail>(`/entries/${slug}/update/`, data),
@@ -29,6 +29,14 @@ export const photosService = {
         headers: { 'Content-Type': 'multipart/form-data' },
       }
     )
+  },
+
+  validatePhoto: (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<{ valid: boolean; message: string }>('/photos/validate/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
   },
 
   deletePhoto: (photoId: string) =>

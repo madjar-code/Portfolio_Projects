@@ -8,7 +8,8 @@ import { ConfirmModal } from '../components/common/ConfirmModal'
 import type { Entry } from '../types/gallery.types'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogoutIcon } from '../components/icons'
+import { LogoutIcon, PlusIcon } from '../components/icons'
+import { FloatingButton } from '../components/common/FloatingButton'
 
 
 const Container = styled.div`
@@ -173,6 +174,10 @@ export const GalleryPage: React.FC = () => {
     navigate(`/gallery/${slug}/edit`)
   ]
 
+  const handleCreateClick = () => {
+    navigate(`/gallery/create`)
+  }
+
   const handleDeleteConfirm = async () => {
     if (!deleteModal.slug) return
 
@@ -260,6 +265,7 @@ export const GalleryPage: React.FC = () => {
           loading={deleting}
         />
       )}
+      <FloatingButton onClick={handleCreateClick} icon={<PlusIcon size={24} />} title="Create Entry" />
     </Container>
   )
 }
