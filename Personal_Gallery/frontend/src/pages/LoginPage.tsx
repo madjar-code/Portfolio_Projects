@@ -246,7 +246,7 @@ export const LoginPage: React.FC = () => {
             <Input
               id="password"
               type="password"
-              placeholder="12345"
+              placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
