@@ -3,7 +3,6 @@ import styled from 'styled-components'
 import { useNavigate } from 'react-router-dom'
 import { photosService } from '../services/photos.service'
 import { PhotoGrid } from '../components/gallery/PhotoGrid'
-import { ConfirmModal } from '../components/common/ConfirmModal'
 import type { Photo } from '../types/gallery.types'
 
 const Container = styled.div`
@@ -25,7 +24,7 @@ const Header = styled.div`
 `
 
 const Title = styled.h1`
-  font-size: 24px;
+  font-size: 20px;
   color: ${({ theme }) => theme.colors.text};
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
