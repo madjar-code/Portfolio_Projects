@@ -1,2 +1,7 @@
 export { LogoutIcon } from './LogoutIcon'
-
+export { LinkIcon } from './LinkIcon'
+export { EditIcon } from './EditIcon'
+export { TrashIcon } from './TrashIcon'
+export { ChevronLeftIcon } from './ChevronLeftIcon'
+export { ChevronRightIcon } from './ChevronRightIcon'
+export { XIcon } from './XIcon'
