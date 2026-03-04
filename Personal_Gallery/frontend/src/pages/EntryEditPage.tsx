@@ -26,7 +26,7 @@ const Header = styled.div`
 `
 
 const Title = styled.h1`
-  font-size: 24px;
+  font-size: 20px;
   color: ${({ theme }) => theme.colors.text};
 
   @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
