@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { photosService } from '../services/photos.service'
 import { PhotoGrid } from '../components/gallery/PhotoGrid'
 import type { Photo } from '../types/gallery.types'
+import { useToast } from '../contexts/ToastContext'
 
 const Container = styled.div`
   max-width: 100%;
@@ -180,6 +181,7 @@ const EmptyState = styled.div`
 
 export const EntryCreatePage: React.FC = () => {
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
@@ -218,11 +220,13 @@ export const EntryCreatePage: React.FC = () => {
 
       await Promise.all(uploadPromises)
 
+      showToast('Entry created successfully', 'success')
       navigate(`/gallery/${entryResponse.data.slug}`)
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.error?.message || 'Failed to create entry'
       setError(errorMessage)
+      showToast(errorMessage, 'error')
       console.error(err)
     } finally {
       setCreating(false)

@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { LogoutIcon, PlusIcon } from '../components/icons'
 import { FloatingButton } from '../components/common/FloatingButton'
+import { useToast } from '../contexts/ToastContext'
 
 
 const Container = styled.div`
@@ -64,7 +65,6 @@ const LogoutButton = styled.button`
   width: 40px;
   height: 40px;
   border-radius: ${({ theme }) => theme.borderRadius.md};
-  background: transparent;
   color: ${({ theme }) => theme.colors.textLight};
   transition: all 0.2s;
   cursor: pointer;
@@ -112,6 +112,7 @@ export const GalleryPage: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0)
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const { showToast } = useToast()
   const [deleteModal, setDeleteModal] = useState<{
     isOpen: boolean
     slug: string | null
@@ -189,10 +190,11 @@ export const GalleryPage: React.FC = () => {
       setEntries(prev => prev.filter(e => e.slug !== deleteModal.slug))
       setTotalCount (prev => prev - 1)
 
+      showToast('Entry deleted successfully', 'success')
       setDeleteModal({ isOpen: false, slug: null })
     } catch (err: any) {
       const errorMessage = err.response?.data?.error?.message || 'Failed to delete entry'
-      alert(errorMessage)
+      showToast(errorMessage, 'error')
       console.error(err)
     } finally {
       setDeleting(false)

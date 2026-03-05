@@ -6,7 +6,8 @@ import type { EntryDetail } from '../types/gallery.types'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ConfirmModal } from '../components/common/ConfirmModal'
 import { PhotoModal } from '../components/gallery/PhotoModal'
-import { EditIcon, TrashIcon } from '../components/icons'
+import { EditIcon, TrashIcon, ChevronLeftIcon } from '../components/icons'
+import { useToast } from '../contexts/ToastContext'
 
 
 const Container = styled.div`
@@ -28,17 +29,24 @@ const TopBar = styled.div`
 `
 
 const BackButton = styled.button`
-  background: none;
-  color: ${({ theme }) => theme.colors.primary};
-  font-size: 14px;
-  padding: ${({ theme }) => theme.spacing.sm} 0;
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  transition: opacity 0.2s;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  color: ${({ theme }) => theme.colors.textLight};
+  transition: all 0.2s;
+  cursor: pointer;
 
   &:hover {
-    opacity: 0.7;
+    background: ${({ theme }) => theme.colors.border};
+    color: ${({ theme }) => theme.colors.text};
+  }
+
+  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
+    width: 44px;
+    height: 44px;
   }
 `
 
@@ -146,6 +154,7 @@ const ErrorText = styled.p`
 export const EntryDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [entry, setEntry] = useState<EntryDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [entryDeleteModal, setEntryDeleteModal] = useState(false)
@@ -236,10 +245,11 @@ export const EntryDetailPage: React.FC = () => {
     try {
       setDeletingEntry(true)
       await photosService.deleteEntry(slug)
+      showToast('Entry deleted successfully', 'success')
       navigate('/gallery')
     } catch (err: any) {
       const errorMessage = err.response?.data?.error?.message || 'Failed to delete entry'
-      alert(errorMessage)
+      showToast(errorMessage, 'error')
       console.error(err)
     } finally {
       setDeletingEntry(false)
@@ -269,8 +279,8 @@ export const EntryDetailPage: React.FC = () => {
   return (
     <Container>
       <TopBar>
-        <BackButton onClick={() => navigate('/gallery')}>
-          ← Back to Gallery
+        <BackButton onClick={() => navigate('/gallery')} title="Back to Gallery">
+          <ChevronLeftIcon size={20} />
         </BackButton>
         <ActionsContainer>
           <ActionButton onClick={handleEdit} title="Edit entry">

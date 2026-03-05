@@ -5,6 +5,7 @@ import { photosService } from '../services/photos.service'
 import { PhotoGrid } from '../components/gallery/PhotoGrid'
 import { ConfirmModal } from '../components/common/ConfirmModal'
 import type { EntryDetail } from '../types/gallery.types'
+import { useToast } from '../contexts/ToastContext'
 
 
 const Container = styled.div`
@@ -181,6 +182,7 @@ const LoadingText = styled.p`
 export const EntryEditPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>()
   const navigate = useNavigate()
+  const { showToast } = useToast()
   const [entry, setEntry] = useState<EntryDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -224,10 +226,12 @@ export const EntryEditPage: React.FC = () => {
       const response = await photosService.updateEntry(slug, { title, description })
       setEntry(response.data)
 
-      console.log('Entry updated successfull')
+      showToast('Entry updated successfully', 'success')
+      navigate(`/gallery/${slug}`)
     } catch (err: any) {
       const errorMessage = err.response?.data?.error?.message || 'Failed to update entry'
       setError(errorMessage)
+      showToast(errorMessage, 'error')
       console.error(err)
     } finally {
       setSaving(false)

@@ -3,6 +3,7 @@ import styled from "styled-components"
 import type { Entry } from "../../types/gallery.types"
 import { DropdownMenu } from "../common/DropdownMenu"
 import { LinkIcon, EditIcon, TrashIcon } from "../icons"
+import { useToast } from "../../contexts/ToastContext"
 
 
 const Item = styled.div`
@@ -71,10 +72,12 @@ interface Props {
 }
 
 export const EntryListItem: React.FC<Props> = ({ entry, onClick, onEdit, onDelete }) => {
+  const { showToast } = useToast()
+
   const handleCopyLink = () => {
     const url = `${window.location.origin}/gallery/${entry.slug}`
     navigator.clipboard.writeText(url)
-    console.log('Link copied:', url)
+    showToast('Link copied to clipboard!', 'success')
   }
 
   const menuOptions = [
