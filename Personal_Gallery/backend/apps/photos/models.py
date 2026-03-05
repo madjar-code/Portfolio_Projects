@@ -39,7 +39,7 @@ class Entry(BaseModel, SlugModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = self.generate_unique_slug(self.title)
+            self.slug = self.generate_unique_slug()
         super().save(*args, **kwargs)
 
 

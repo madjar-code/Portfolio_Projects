@@ -1,7 +1,8 @@
 import uuid
+import secrets
+import string
 from django.db import models
 from django.db.models import Manager
-from django.utils.text import slugify
 from .managers import SoftDeletionManager
 
 
@@ -69,19 +70,26 @@ class SlugModel(models.Model):
     class Meta:
         abstract = True
 
-    def generate_unique_slug(self, base_text: str) -> str:
-        slug_base = slugify(base_text)[:90]
-        if not slug_base:
-            slug_base = str(self.id)[:8]
+    def generate_unique_slug(self, base_text: str = None, length: int = 8) -> str:
+        """
+        Generate a unique random slug.
+        Uses URL-safe characters (letters and digits).
+        Default length is 8 characters (like YouTube: dQw4w9WgXcQ).
+        """
+        # Characters to use: a-z, A-Z, 0-9 (62 characters total)
+        alphabet = string.ascii_letters + string.digits
 
-        slug = slug_base
-        counter = 1
+        # Try to generate unique slug (max 10 attempts)
+        for _ in range(10):
+            # Generate random string
+            slug = ''.join(secrets.choice(alphabet) for _ in range(length))
 
-        while self.__class__.objects.filter(slug=slug).exclude(id=self.id).exists():
-            slug = f"{slug_base}-{counter}"
-            counter += 1
+            # Check if unique
+            if not self.__class__.objects.filter(slug=slug).exclude(id=self.id).exists():
+                return slug
 
-        return slug
+        # Fallback: use UUID if couldn't generate unique slug
+        return str(uuid.uuid4())[:8]
 
 
 class BaseModel(
