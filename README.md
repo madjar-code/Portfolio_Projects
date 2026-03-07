@@ -34,38 +34,26 @@ main (production-ready projects)
 **Branch**: `feature/personal-gallery` (merged)
 **Directory**: `/Personal_Gallery`
 
-An educational web platform for uploading and managing a personal photo gallery with authentication.
+A modern, full-stack web application for managing and sharing personal photo collections with authentication and responsive UI.
 
-#### Core Features
-- **Authentication**: Google OAuth + Email/Password registration
-- **Photo Management**: Upload photos individually or in batches, organized into "Entries" (albums)
-- **Gallery Viewing**: Browse entries (index page) and view detailed entry pages with photos
-- **Admin Panel**: Django Admin for moderation and management
-- **Statistics**: Aggregated stats on entries (cached with Redis)
+#### Key Features
+- JWT and Google OAuth 2.0 authentication
+- Photo entry (album) management with shareable links
+- Multi-file upload with drag-and-drop
+- Responsive Material Design-inspired interface
+- Soft deletion and recovery
 
 #### Tech Stack
-- **Frontend**: React SPA (TypeScript optional)
-- **Backend**: Django + Django REST Framework with JWT authentication
-- **Database**: PostgreSQL (metadata)
-- **Storage**: S3-compatible object storage (DigitalOcean Spaces/MinIO) for photos
-- **Caching**: Redis
-- **Background Tasks**: Celery (image processing, email notifications)
-- **Deployment**: Docker + docker-compose + Nginx on VPS
+- **Backend**: Django + Django REST Framework + PostgreSQL
+- **Frontend**: React + TypeScript + Styled Components
+- **Key Technologies**: JWT authentication, Vite, Axios, Pillow
 
-#### Architecture
-**N-tier monolithic backend** with clear layer separation:
-1. **API Layer** (DRF Views) → thin controllers
-2. **Serializers** → validation & transformation
-3. **Service Layer** → business logic
-4. **Models & Managers** → data persistence (no repository pattern)
-5. **Adapters** → external services (S3, Redis, OAuth, SMTP)
-
-#### Project Goals
-Educational/portfolio project focused on:
-- System design & architecture documentation
-- Production-like infrastructure setup
-- Working with object storage, caching, and background processing
-- End-to-end development with proper deployment
+#### Highlights
+- Repository pattern with custom managers
+- UUID-based primary keys and random slug generation
+- Infinite scroll and lazy loading
+- Custom React hooks and Context API
+- Image validation and optimization
 
 [📖 Full Documentation](./Personal_Gallery/README.md)
 
