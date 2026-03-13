@@ -78,3 +78,6 @@ coverage
 temp.html
 test_google.html
 test_google_oauth.html
+
+# Chat to implement this project
+CHAT.json
