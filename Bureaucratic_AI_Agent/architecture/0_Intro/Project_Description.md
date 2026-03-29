@@ -1,97 +1,97 @@
 # Bureaucratic AI Agent
 
-## 1. Обзор
+## 1. Overview
 
-Проект представляет собой AI-агента для автоматизации различного рода бюрократических процессов (AI-GovTech). Какие функции будут в общих чертах:
+The project is an AI agent for automating various bureaucratic processes (AI-GovTech). The general functionality includes:
 
-1. Агент получает метаданные и документ(ы) и обрабатывает их (OCR). Документы получаются от пользователя (гражданин)
-2. Агент выбирает подходящий сценарий (лицензия на производство, лицензия на торговлю, …) для обработки из документа и проходится по нему.
-3. В рамках этого происходит валидация документов и метаданных:
-    - соответствие критериям из сценария;
-    - запрос относительно пользователя в JSON (на импровизированный API) — делается только если это предполагается сценарием;
-4. В конце пользователь получает ответ после обработки.
+1. The agent receives metadata and document(s) and processes them (OCR). Documents are received from the user (citizen)
+2. The agent selects an appropriate scenario (production license, trade license, etc.) for processing from the document and follows it.
+3. Within this process, document and metadata validation occurs:
+    - compliance with criteria from the scenario;
+    - user query in JSON (to an improvised API) — only done if the scenario requires it;
+4. At the end, the user receives a response after processing.
 
-Суть в том, что я не хочу создавать излишне ограниченную систему. Я хочу реализовать гибкого агента, который сможет работать в рамках разных сценариев.
+The point is that I don't want to create an overly restrictive system. I want to implement a flexible agent that can work within different scenarios.
 
-Платформа включает следующие части:
+The platform includes the following parts:
 
-1. Простой клиент, в котором отображаются заявки и их статусы (Next.js)
-2. Непосредственно агентная система с backend wrapper
-
----
-
-## 2. Цели проекта
-
-Это не бизнес-проект ⇒ бизнес-цели тут неуместны
-
-### **Основные develop-цели**
-
-- Разработать бизнес-требования: функциональные и нефункциональные
-- Разработать полный список необходимых диаграмм
-- End-to-end разработка AI-агента с использованием LLM
-- Поработать с RAG (Retrieval-Augmented Generation) для базы знаний
-- Применить векторные базы данных для семантического поиска
-- Интегрировать LangChain/LlamaIndex для оркестрации AI
-
-### Пользовательские цели
-
-- Получать апдейты по заявкам → статусы, объяснения
-- Ускорить бюрократические процессы
+1. A simple client that displays applications and their statuses (Next.js)
+2. The agent system itself with a backend wrapper
 
 ---
 
-## 3. Scope / Область проекта
+## 2. Project Goals
+
+This is not a business project ⇒ business goals are not applicable here
+
+### **Main Development Goals**
+
+- Develop business requirements: functional and non-functional
+- Develop a complete list of required diagrams
+- End-to-end development of an AI agent using LLM
+- Work with RAG (Retrieval-Augmented Generation) for the knowledge base
+- Apply vector databases for semantic search
+- Integrate LangChain/LlamaIndex for AI orchestration
+
+### User Goals
+
+- Receive updates on applications → statuses, explanations
+- Speed up bureaucratic processes
+
+---
+
+## 3. Scope
 
 ### 3.1 In Scope
 
-- Аутентификация и авторизация пользователей (JWT или OAuth)
-- Загрузка и анализ документов (PDF, DOCX)
-- Проверка на соответствие критериям
-- История заявок пользователя
-- Безопасность, evaluation, observability агентной системы
+- User authentication and authorization (JWT or OAuth)
+- Document upload and analysis (PDF, DOCX)
+- Criteria compliance verification
+- User application history
+- Security, evaluation, observability of the agent system
 
 ### **3.2 Out of Scope**
 
-- Чат-интерфейс для общения с AI-агентом
-- Прямая интеграция с государственными порталами
-- Автоматическая подача документов от имени пользователя
-- Оплата госпошлин через систему
-- Мобильное приложение (только web)
+- Chat interface for communicating with the AI agent
+- Direct integration with government portals
+- Automatic document submission on behalf of the user
+- Government fee payment through the system
+- Mobile application (web only)
 
 ---
 
 ## **4. Stakeholders**
 
-| **Стейкхолдер** | **Роль в Bureaucratic AI Agent** | **Интерес / ожидания** |
+| **Stakeholder** | **Role in Bureaucratic AI Agent** | **Interest / Expectations** |
 | --- | --- | --- |
-| Product Owner (вы) | Инициатор, постановщик целей, архитектор | Реализовать учебные и тех. цели проекта, изучить AI/LLM |
-| Конечные пользователи | Получают консультации, заполняют формы | Точность ответов, простота использования, экономия времени |
-| Тех. ревьюеры | Оценивают как учебный/портфолио-проект | Грамотная архитектура AI-агента, качественный RAG, хороший код |
-| LLM провайдеры | OpenAI, Anthropic и др. | Корректное использование API, соблюдение rate limits |
-| Инфраструктура | AWS, векторные БД | Корректная интеграция, оптимизация затрат |
+| Product Owner (you) | Initiator, goal setter, architect | Implement educational and technical project goals, learn AI/LLM |
+| End Users | Receive consultations, fill out forms | Accuracy of responses, ease of use, time savings |
+| Technical Reviewers | Evaluate as an educational/portfolio project | Proper AI agent architecture, quality RAG, good code |
+| LLM Providers | OpenAI, Anthropic, etc. | Correct API usage, rate limit compliance |
+| Infrastructure | AWS, vector databases | Proper integration, cost optimization |
 
 ---
 
-## **5. Термины и ключевые понятия**
+## **5. Terms and Key Concepts**
 
-| **Термин** | **Определение** |
+| **Term** | **Definition** |
 | --- | --- |
-| AI Agent | Интеллектуальный агент на базе LLM, способный выполнять задачи и использовать инструменты |
-| RAG (Retrieval-Augmented Generation) | Техника дополнения LLM релевантной информацией из базы знаний |
-| Procedure | Бюрократическая процедура (например, "Получение паспорта", "Регистрация ИП") |
-| Document Template | Шаблон документа для заполнения |
-| Checklist | Список требований для конкретной процедуры |
-| Application | Заявка, которая подается пользователем через приложение |
-| Embedding | Векторное представление текста для семантического поиска |
+| AI Agent | An intelligent agent based on LLM capable of performing tasks and using tools |
+| RAG (Retrieval-Augmented Generation) | A technique for augmenting LLM with relevant information from a knowledge base |
+| Procedure | A bureaucratic procedure (e.g., "Passport issuance", "Individual entrepreneur registration") |
+| Document Template | A document template for filling out |
+| Checklist | A list of requirements for a specific procedure |
+| Application | An application submitted by the user through the application |
+| Embedding | A vector representation of text for semantic search |
 
 ---
 
-## **6. Risks / Риски**
+## **6. Risks**
 
-| Риск | Описание | Митигация |
+| Risk | Description | Mitigation |
 | --- | --- | --- |
-| Высокая стоимость LLM API | Частые запросы к GPT-4 могут быть дорогими | Кэширование, использование более дешевых моделей для простых задач, rate limiting |
-| Неточные ответы AI | LLM может галлюцинировать или давать устаревшую информацию | Промпт с актуальной базой знаний, disclaimer о проверке информации |
-| Утечка персональных данных | Документы пользователей содержат чувствительную информацию | Шифрование, соблюдение GDPR, не отправлять PII в LLM |
-| Устаревание базы знаний | Законы и процедуры меняются | Версионирование документов, регулярное обновление |
+| High LLM API Costs | Frequent requests to GPT-4 can be expensive | Caching, using cheaper models for simple tasks, rate limiting |
+| Inaccurate AI Responses | LLM may hallucinate or provide outdated information | Prompt with up-to-date knowledge base, disclaimer about information verification |
+| Personal Data Leakage | User documents contain sensitive information | Encryption, GDPR compliance, do not send PII to LLM |
+| Knowledge Base Outdatedness | Laws and procedures change | Document versioning, regular updates |
 

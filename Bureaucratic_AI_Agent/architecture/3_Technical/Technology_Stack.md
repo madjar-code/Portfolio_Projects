@@ -2,64 +2,64 @@
 
 ## Overview
 
-Проект использует современный стек технологий для трёх основных компонентов: Frontend (SPA), Backend API и AI-Agent.
+The project uses a modern technology stack for three main components: Frontend (SPA), Backend API, and AI-Agent.
 
 ---
 
 ## Frontend (Web Client)
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
-| **Next.js** | React-based фреймворк с SSR/SSG |
-| **TypeScript** | Типизация кода |
-| **React** | UI-компоненты |
-| **Tailwind CSS** | Стилизация |
-| **React Query / SWR** | Управление серверным состоянием |
-| **EventSource (SSE)** | Real-time уведомления от backend |
+| **Next.js** | React-based framework with SSR/SSG |
+| **TypeScript** | Code typing |
+| **React** | UI components |
+| **Tailwind CSS** | Styling |
+| **React Query / SWR** | Server state management |
+| **EventSource (SSE)** | Real-time notifications from backend |
 
 ---
 
 ## Backend API
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
-| **Django** | Основной веб-фреймворк |
+| **Django** | Main web framework |
 | **Django REST Framework** | REST API |
-| **PostgreSQL** | Основная база данных |
-| **Celery** | Асинхронные задачи |
-| **Redis / RabbitMQ** | Message broker для Celery |
-| **S3 / MinIO** | Object Storage для документов |
-| **JWT (simplejwt)** | Аутентификация |
-| **Pydantic** | Валидация callback от AI-агента |
-| **Django Streaming (SSE)** | Push-уведомления клиенту |
-| **Gunicorn / Uvicorn** | WSGI/ASGI сервер |
+| **PostgreSQL** | Main database |
+| **Celery** | Asynchronous tasks |
+| **Redis / RabbitMQ** | Message broker for Celery |
+| **S3 / MinIO** | Object Storage for documents |
+| **JWT (simplejwt)** | Authentication |
+| **Pydantic** | Validation of callback from AI agent |
+| **Django Streaming (SSE)** | Push notifications to client |
+| **Gunicorn / Uvicorn** | WSGI/ASGI server |
 
 ---
 
 ## AI-Agent
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
-| **Python 3.11+** | Основной язык |
-| **LangChain / LangGraph** | Оркестрация AI-workflow |
-| **OpenAI API (GPT-4)** | Основная LLM |
-| **Anthropic API (Claude)** | Альтернативная LLM |
-| **Tesseract / pytesseract** | OCR — извлечение текста из изображений |
-| **PyMuPDF / pdfplumber** | Работа с PDF |
-| **python-docx** | Работа с DOCX |
-| **SQLite** | Локальное хранение метаданных процедур |
-| **Pydantic** | Валидация данных и AIReport |
-| **httpx** | HTTP-клиент для callback |
+| **Python 3.11+** | Main language |
+| **LangChain / LangGraph** | AI workflow orchestration |
+| **OpenAI API (GPT-4)** | Main LLM |
+| **Anthropic API (Claude)** | Alternative LLM |
+| **Tesseract / pytesseract** | OCR — text extraction from images |
+| **PyMuPDF / pdfplumber** | PDF processing |
+| **python-docx** | DOCX processing |
+| **SQLite** | Local storage of procedure metadata |
+| **Pydantic** | Data and AIReport validation |
+| **httpx** | HTTP client for callback |
 
 ---
 
 ## Infrastructure & DevOps
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
-| **Docker** | Контейнеризация |
-| **Docker Compose** | Локальная разработка |
-| **AWS** | Продакшн-инфраструктура |
+| **Docker** | Containerization |
+| **Docker Compose** | Local development |
+| **AWS** | Production infrastructure |
 | **Nginx** | Reverse proxy |
 | **GitHub Actions** | CI/CD |
 
@@ -67,23 +67,23 @@
 
 ## Monitoring & Observability
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
 | **Sentry** | Error tracking |
-| **LangSmith** | Трассировка AI-агента |
-| **CloudWatch** | Логи (prod) |
-| **LLM-as-Judge** | Evaluation агента |
+| **LangSmith** | AI agent tracing |
+| **CloudWatch** | Logs (prod) |
+| **LLM-as-Judge** | Agent evaluation |
 
 ---
 
 ## Development Tools
 
-| Технология | Назначение |
+| Technology | Purpose |
 |------------|------------|
 | **UV / pip** | Python dependencies |
 | **npm / pnpm** | JS dependencies |
 | **Ruff / Black** | Python linting & formatting |
 | **ESLint / Prettier** | JS/TS linting & formatting |
-| **pytest** | Python тесты |
-| **mypy** | Статическая типизация Python |
+| **pytest** | Python tests |
+| **mypy** | Static Python typing |
 

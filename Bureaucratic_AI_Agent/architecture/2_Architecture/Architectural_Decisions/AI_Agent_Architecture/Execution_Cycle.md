@@ -1,382 +1,382 @@
 ## **1. Overview**
 
-Обработка задачи агентом — это **итеративный цикл** планирования, выполнения и рефлексии.
+Task processing by the agent is an **iterative cycle** of planning, execution, and reflection.
 
-Агент не следует жёсткому алгоритму. Вместо этого он:
+The agent does not follow a rigid algorithm. Instead, it:
 
-- получает инструкции процедуры через промпт,
-- формирует план действий,
-- выполняет план через инструменты,
-- рефлексирует над результатами,
-- корректирует действия при необходимости.
+- receives procedure instructions through the prompt,
+- forms an action plan,
+- executes the plan through tools,
+- reflects on the results,
+- adjusts actions as necessary.
 
-Ключевая особенность — агент **интерпретирует** процедуру и **адаптирует** свои действия в зависимости от данных.
+The key feature is that the agent **interprets** the procedure and **adapts** its actions based on the data.
 
-Основные компоненты (см. диаграмму):
+Main components (see diagram):
 
-- **Agent Orchestration** — управляет общим flow
-- **Prompt Builder** — формирует контекст с инструкциями
-- **Reasoning Loop** — итеративный цикл "план → действие → рефлексия"
-- **Tool Set** — инструменты для работы с документами и данными
-- **LLM Registry** — управление вызовами LLM
+- **Agent Orchestration** — manages the overall flow
+- **Prompt Builder** — forms the context with instructions
+- **Reasoning Loop** — iterative cycle of "plan → action → reflection"
+- **Tool Set** — tools for working with documents and data
+- **LLM Registry** — manages LLM calls
 
 ## **2. High-Level Execution Flow**
 
-Обработка задачи проходит через три основные фазы.
+Task processing goes through three main phases.
 
 ### **2.1 Initialization**
 
 ```
-1. Queue Consumer получает задачу из очереди
+1. Queue Consumer receives a task from the queue
    ↓
-2. Agent Orchestration инициализирует контекст
+2. Agent Orchestration initializes the context
    ↓
-3. Загружается процедура (метаданные из SQLite + инструкции из Knowledge Base)
+3. The procedure is loaded (metadata from SQLite + instructions from Knowledge Base)
    ↓
-4. Prompt Builder формирует промпт с:
-   - инструкциями процедуры
-   - метаданными заявки (form_data)
-   - метаданными документа (URL, filename)
-   - списком доступных инструментов
+4. Prompt Builder forms the prompt with:
+   - procedure instructions
+   - application metadata (form_data)
+   - document metadata (URL, filename)
+   - list of available tools
 ```
 
-**Результат:** агент получает полный контекст для начала работы.
+**Result:** the agent receives the full context to begin work.
 
 ### **2.2 Execution (Reasoning Loop)**
 
-Агент выполняет задачу через **итеративный цикл**:
+The agent performs the task through an **iterative cycle**:
 
 ```
 loop until task_complete:
-    Planning: формирование/корректировка плана
+    Planning: forming/adjusting the plan
     ↓
-    Action: выбор и вызов инструмента
+    Action: selecting and calling a tool
     ↓
-    Observation: получение результата
+    Observation: receiving the result
     ↓
-    Reflection: анализ прогресса и корректировка
+    Reflection: analyzing progress and adjusting
 ```
 
-**Важно:**
+**Important:**
 
-> Агент **не следует жёсткому плану**. Он адаптирует свои действия на основе полученных данных.
+> The agent **does not follow a rigid plan**. It adapts its actions based on the received data.
 > 
 
 ### **2.3 Completion**
 
-Когда агент завершил обработку:
+When the agent has completed processing:
 
 ```
-1. Формирование структурированного отчёта (AIReport)
+1. Forming a structured report (AIReport)
    ↓
-2. Валидация формата отчёта (Pydantic)
+2. Validating the report format (Pydantic)
    ↓
-3. Отправка через Callback Client в Backend API
+3. Sending via Callback Client to Backend API
    ↓
-4. Логирование результата
+4. Logging the result
    ↓
-5. Завершение задачи
+5. Task completion
 ```
 
 ## **3. Reasoning Loop**
 
-Это **центральный механизм** агента. Реализован через LangGraph state machine.
+This is the **central mechanism** of the agent. Implemented through LangGraph state machine.
 
 ### **3.1 Loop Structure**
 
 ### **3.2 Planning**
 
-Агент формирует или корректирует план на основе:
+The agent forms or adjusts the plan based on:
 
-- инструкций процедуры (из промпта),
-- текущего состояния выполнения,
-- уже собранных данных.
+- procedure instructions (from the prompt),
+- current execution state,
+- already collected data.
 
-**Пример начального плана:**
+**Example of an initial plan:**
 
 ```
-План обработки заявки на паспорт:
-1. Прочитать первую страницу документа (свидетельство о рождении)
-2. Извлечь ФИО через OCR
-3. Извлечь дату рождения
-4. Сравнить с данными из формы
-5. Проверить в базе ЗАГС через external API
-6. Принять решение: ACCEPT или REJECT
+Passport application processing plan:
+1. Read the first page of the document (birth certificate)
+2. Extract full name via OCR
+3. Extract date of birth
+4. Compare with form data
+5. Check in Civil Registry database via external API
+6. Make decision: ACCEPT or REJECT
 ```
 
-**Важно:**
+**Important:**
 
-> План **не фиксирован**. Агент корректирует его при обнаружении проблем или получении неожиданных данных.
+> The plan **is not fixed**. The agent adjusts it when problems are detected or unexpected data is received.
 > 
 
 ### **3.3 Action (Tool Execution)**
 
-Агент выбирает и выполняет инструмент из Tool Set.
+The agent selects and executes a tool from the Tool Set.
 
-**Доступные инструменты:**
+**Available tools:**
 
-- `read_document_page(page_number)` — прочитать страницу документа
-- `ocr_document_region(page, x, y, width, height)` — OCR для области
-- `extract_field_from_document(field_name)` — извлечь конкретное поле
-- `call_external_api(endpoint, params)` — запрос к внешнему API
-- `search_knowledge_base(query)` — поиск примеров
+- `read_document_page(page_number)` — read a document page
+- `ocr_document_region(page, x, y, width, height)` — OCR for a region
+- `extract_field_from_document(field_name)` — extract a specific field
+- `call_external_api(endpoint, params)` — request to external API
+- `search_knowledge_base(query)` — search for examples
 
-**Пример:**
+**Example:**
 
 ```json
 Action: read_document_page
 Parameters: {"page_number": 1}
 
-Result: "СВИДЕТЕЛЬСТВО О РОЖДЕНИИ\nФИО: Иванов Иван Иванович\n..."
+Result: "BIRTH CERTIFICATE\nFull Name: Ivanov Ivan Ivanovich\n..."
 ```
 
 ### **3.4 Observation**
 
-Агент получает результат выполнения инструмента и добавляет его в контекст.
+The agent receives the tool execution result and adds it to the context.
 
 ```
 Observation:
-Прочитана первая страница документа.
-Найден текст: "ФИО: Иванов Иван Иванович"
+First page of the document has been read.
+Text found: "Full Name: Ivanov Ivan Ivanovich"
 ```
 
 ### **3.5 Reflection**
 
-Агент анализирует результаты и принимает решение о дальнейших действиях.
+The agent analyzes the results and decides on further actions.
 
-**Вопросы для рефлексии:**
+**Reflection questions:**
 
-- Достигнута ли цель текущего шага?
-- Нужна ли корректировка плана?
-- Обнаружены ли несоответствия или проблемы?
-- Достаточно ли данных для принятия финального решения?
+- Has the goal of the current step been achieved?
+- Is plan adjustment needed?
+- Have any discrepancies or problems been detected?
+- Is there enough data to make a final decision?
 
-**Пример рефлексии:**
+**Example reflection:**
 
 ```
-Рефлексия:
-- ФИО успешно извлечено: "Иванов Иван Иванович"
-- Совпадает с данными формы: "Иванов Иван Иванович" ✓
-- Следующий шаг: извлечь дату рождения
+Reflection:
+- Full name successfully extracted: "Ivanov Ivan Ivanovich"
+- Matches form data: "Ivanov Ivan Ivanovich" ✓
+- Next step: extract date of birth
 ```
 
-**Результат рефлексии:**
+**Reflection result:**
 
-- **Continue** → возврат к Planning для следующего шага
-- **Complete** → переход к формированию отчёта
+- **Continue** → return to Planning for the next step
+- **Complete** → proceed to report formation
 
 ## **4. Adaptive Planning**
 
-Ключевая особенность агента — способность **корректировать план** в процессе выполнения **в рамках инструкций процедуры**.
+A key feature of the agent is its ability to **adjust the plan** during execution **within the procedure instructions**.
 
 ### **4.1 Initial Planning**
 
-При получении задачи агент формирует начальный план на основе инструкций процедуры из промпта.
+When receiving a task, the agent forms an initial plan based on the procedure instructions from the prompt.
 
 ### **4.2 Bounded Adaptation**
 
-Агент адаптирует свои действия, **но остаётся в границах процедуры**.
+The agent adapts its actions, **but remains within the procedure boundaries**.
 
-**Важный принцип:**
+**Important principle:**
 
-> Агент может менять **способ** выполнения шагов, но не может игнорировать **требования процедуры**.
+> The agent can change the **method** of executing steps, but cannot ignore the **procedure requirements**.
 > 
 
-**Что агент МОЖЕТ:**
+**What the agent CAN do:**
 
-- выбрать альтернативный инструмент (OCR вместо PDF parser)
-- повторить действие с другими параметрами
-- использовать другой подход к извлечению данных
+- choose an alternative tool (OCR instead of PDF parser)
+- repeat an action with different parameters
+- use a different approach to data extraction
 
-**Что агент НЕ МОЖЕТ:**
+**What the agent CANNOT do:**
 
-- пропустить обязательную проверку
-- изменить требования процедуры
-- искать данные там, где процедура этого не предполагает
+- skip a mandatory check
+- change procedure requirements
+- search for data where the procedure does not expect it
 
 ### **4.3 Replanning Example**
 
-**Сценарий 1: Допустимая адаптация**
+**Scenario 1: Permissible adaptation**
 
 ```
-Инструкция процедуры: "Извлечь ФИО из свидетельства о рождении"
+Procedure instruction: "Extract full name from birth certificate"
 
-Исходный план:
-1. Прочитать документ через PDF parser
-2. Найти ФИО
+Original plan:
+1. Read document via PDF parser
+2. Find full name
 
-Проблема: PDF parser не смог извлечь текст
+Problem: PDF parser could not extract text
 
-Корректировка плана (допустимо):
-1. Использовать OCR для чтения документа
-2. Найти ФИО
-3. Если OCR не помог — пометить документ как нечитаемый
+Plan adjustment (permissible):
+1. Use OCR to read the document
+2. Find full name
+3. If OCR doesn't help — mark document as unreadable
 ```
 
-**Сценарий 2: Недопустимая адаптация**
+**Scenario 2: Impermissible adaptation**
 
 ```
-Инструкция процедуры: "ФИО должно быть на первой странице свидетельства"
+Procedure instruction: "Full name must be on the first page of the certificate"
 
-Исходный план:
-1. Прочитать первую страницу
-2. Извлечь ФИО
+Original plan:
+1. Read the first page
+2. Extract full name
 
-Проблема: На первой странице нет ФИО
+Problem: No full name on the first page
 
-Недопустимая корректировка:
-❌ Прочитать вторую страницу и искать там
+Impermissible adjustment:
+❌ Read the second page and search there
 
-Допустимая корректировка:
-✓ Использовать OCR для первой страницы (другой метод чтения)
-✓ Если не найдено — зафиксировать как НЕСООТВЕТСТВИЕ требованиям
-✓ Включить в отчёт: "ФИО отсутствует на первой странице"
+Permissible adjustment:
+✓ Use OCR for the first page (different reading method)
+✓ If not found — record as NON-COMPLIANCE with requirements
+✓ Include in report: "Full name is missing on the first page"
 ```
 
 ### **4.4 Handling Non-Compliance**
 
-Если данные не соответствуют требованиям процедуры:
+If data does not meet procedure requirements:
 
 ```
-1. Агент НЕ пытается "подогнать" данные под требования
-2. Фиксирует несоответствие в отчёте
-3. Помечает как issue с severity: "critical"
-4. Рекомендует: REJECT
+1. The agent does NOT try to "fit" data to requirements
+2. Records the discrepancy in the report
+3. Marks as issue with severity: "critical"
+4. Recommends: REJECT
 ```
 
-**Результат:**
+**Result:**
 
-> Агент адаптируется к **техническим проблемам** (как прочитать документ), но строго следует **бизнес-требованиям** (что должно быть в документе).
+> The agent adapts to **technical problems** (how to read the document), but strictly follows **business requirements** (what should be in the document).
 > 
 
 ## **5. Reflection and Self-Correction**
 
-Агент способен **анализировать свои действия** и исправлять ошибки.
+The agent is capable of **analyzing its actions** and correcting errors.
 
 ### **5.1 Reflection Levels**
 
-**Lightweight Reflection** — после каждого действия:
+**Lightweight Reflection** — after each action:
 
-- Что получено?
-- Соответствует ли ожиданиям?
-- Нужны ли дополнительные действия?
+- What was received?
+- Does it meet expectations?
+- Are additional actions needed?
 
-**Deep Reflection** — перед финальным решением:
+**Deep Reflection** — before the final decision:
 
-- Все ли проверки выполнены?
-- Нет ли противоречий в данных?
-- Достаточна ли уверенность для принятия решения?
+- Have all checks been completed?
+- Are there any contradictions in the data?
+- Is there sufficient confidence to make a decision?
 
 ### **5.2 Self-Correction Example**
 
 ```
 Observation:
-Извлечена дата: "01.13.1990"
+Date extracted: "01.13.1990"
 
 Reflection:
-Это невалидная дата (месяц не может быть 13).
-Вероятно, формат MM.DD.YYYY, а не DD.MM.YYYY.
+This is an invalid date (month cannot be 13).
+Probably, the format is MM.DD.YYYY, not DD.MM.YYYY.
 
 Correction:
-Переинтерпретировать как "13.01.1990" (DD.MM.YYYY).
-Результат: "1990-01-13"
+Reinterpret as "13.01.1990" (DD.MM.YYYY).
+Result: "1990-01-13"
 ```
 
 ### **5.3 Confidence Assessment**
 
-Агент оценивает уверенность в своих выводах:
+The agent evaluates confidence in its conclusions:
 
 ```json
 {
   "field": "birth_date",
   "value": "1990-01-13",
   "confidence": 0.85,
-  "reasoning": "Дата извлечена из чёткого текста, но формат требовал интерпретации"
+  "reasoning": "Date extracted from clear text, but format required interpretation"
 }
 ```
 
-При низкой уверенности (< 0.7) агент:
+With low confidence (< 0.7), the agent:
 
-- помечает поле как требующее проверки,
-- включает предупреждение в отчёт,
-- может попытаться альтернативный подход.
+- marks the field as requiring verification,
+- includes a warning in the report,
+- may attempt an alternative approach.
 
 ## **6. Error Handling and Retry**
 
-Система обрабатывает ошибки на нескольких уровнях.
+The system handles errors at multiple levels.
 
 ### **6.1 Tool-Level Retry**
 
-Если инструмент вернул ошибку (timeout, network error):
+If a tool returns an error (timeout, network error):
 
 ```
-Попытка 1: read_document_page → timeout
-Попытка 2: read_document_page (увеличенный timeout) → success
+Attempt 1: read_document_page → timeout
+Attempt 2: read_document_page (increased timeout) → success
 ```
 
-**Параметры:**
+**Parameters:**
 
 - max retries: 3
 - exponential backoff: 1s, 2s, 4s
 
 ### **6.2 LLM-Level Retry**
 
-Если LLM вернул невалидный ответ:
+If LLM returns an invalid response:
 
 ```
-Попытка 1: LLM → невалидный JSON
-Попытка 2: LLM (уточнённый промпт + пример) → валидный JSON
+Attempt 1: LLM → invalid JSON
+Attempt 2: LLM (refined prompt + example) → valid JSON
 ```
 
 ### **6.3 Task-Level Retry**
 
-Если задача полностью провалилась:
+If the task completely fails:
 
 ```
-Попытка 1: agent execution → exception
-Попытка 2: agent execution (с логами предыдущей попытки) → success
+Attempt 1: agent execution → exception
+Attempt 2: agent execution (with logs from previous attempt) → success
 ```
 
-**Управление:** Celery retry mechanism (max 3 попытки)
+**Management:** Celery retry mechanism (max 3 attempts)
 
 ### **6.4 Graceful Degradation**
 
-Если некритичный шаг не удался, агент продолжает работу:
+If a non-critical step fails, the agent continues working:
 
 ```
-Проблема: внешний API недоступен
+Problem: external API is unavailable
 
-Решение:
-- пометить проверку как "не выполнена"
-- продолжить с остальными проверками
-- включить предупреждение в отчёт
+Solution:
+- mark the check as "not completed"
+- continue with other checks
+- include a warning in the report
 ```
 
 ## **7. Summary**
 
-Execution cycle агента — это **адаптивный итеративный процесс в рамках процедуры**, а не жёсткий алгоритм.
+The agent's execution cycle is an **adaptive iterative process within the procedure**, not a rigid algorithm.
 
-**Ключевые принципы:**
+**Key principles:**
 
-- **Интерпретация** — агент получает инструкции через промпт и интерпретирует их
-- **Планирование** — формирует план на основе процедуры
-- **Итеративность** — цикл "план → действие → наблюдение → рефлексия"
-- **Bounded Adaptation** — корректирует **способ** выполнения, но не **требования** процедуры
-- **Рефлексия** — анализирует результаты и исправляет ошибки
-- **Устойчивость** — многоуровневая retry strategy
-- **Ленивая загрузка** — читает документ по мере необходимости, а не целиком
+- **Interpretation** — the agent receives instructions through the prompt and interprets them
+- **Planning** — forms a plan based on the procedure
+- **Iterativity** — cycle of "plan → action → observation → reflection"
+- **Bounded Adaptation** — adjusts the **method** of execution, but not the **procedure requirements**
+- **Reflection** — analyzes results and corrects errors
+- **Resilience** — multi-level retry strategy
+- **Lazy loading** — reads documents as needed, not entirely
 
-**Важное ограничение:**
+**Important limitation:**
 
-> Агент адаптируется к техническим проблемам (как читать документ), но строго следует бизнес-требованиям процедуры (что должно быть в документе).
+> The agent adapts to technical problems (how to read the document), but strictly follows business requirements of the procedure (what should be in the document).
 > 
 
-**Архитектурные компоненты (см. диаграмму):**
+**Architectural components (see diagram):**
 
-- **Agent Orchestration** — управляет общим flow
-- **Prompt Builder** — формирует контекст с инструкциями
-- **Reasoning Loop** — реализует итеративный цикл
-- **Tool Set** — предоставляет инструменты для работы с документами
-- **LLM Registry** — управляет вызовами LLM
+- **Agent Orchestration** — manages the overall flow
+- **Prompt Builder** — forms the context with instructions
+- **Reasoning Loop** — implements the iterative cycle
+- **Tool Set** — provides tools for working with documents
+- **LLM Registry** — manages LLM calls
 
-Такая архитектура обеспечивает гибкость в исполнении при строгом соблюдении требований процедуры.
+This architecture ensures flexibility in execution while strictly adhering to procedure requirements.

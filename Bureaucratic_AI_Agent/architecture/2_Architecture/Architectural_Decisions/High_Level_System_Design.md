@@ -2,146 +2,146 @@
 
 ## **1. Overview**
 
-Система предназначена для автоматизации обработки пользовательских заявок (applications), включающих метаданные и документы. Архитектура построена на разделении ответственности между backend, управляющим жизненным циклом заявки, и AI-агентом, выполняющим её обработку.
+The system is designed for automating the processing of user applications, including metadata and documents. The architecture is built on separation of responsibilities between the backend, which manages the application lifecycle, and the AI agent, which performs the processing.
 
-Ключевая идея системы — асинхронная обработка задач с явным контуром обратной связи: backend инициирует обработку, а агент по завершении возвращает результат через callback.
+The key idea of the system is asynchronous task processing with an explicit feedback loop: the backend initiates processing, and the agent returns the result upon completion via callback.
 
 ## **2. Architectural Approach**
 
-Система построена вокруг асинхронного взаимодействия между компонентами через очередь сообщений.
+The system is built around asynchronous interaction between components through a message queue.
 
-Backend отвечает за:
+The backend is responsible for:
 
-- прием и хранение заявок,
-- постановку задач на обработку,
-- управление состоянием.
+- receiving and storing applications,
+- queuing tasks for processing,
+- state management.
 
-AI-агент выступает в роли независимого исполнителя (worker), который обрабатывает задачи и возвращает результат через **callback в backend**.
+The AI agent acts as an independent worker that processes tasks and returns results via **callback to the backend**.
 
-Именно callback-модель делает систему реактивной и позволяет backend оставаться источником истины (source of truth) для состояния заявок.
+It is the callback model that makes the system reactive and allows the backend to remain the source of truth for application states.
 
 ## **3. System Components**
 
 ### **3.1 Web Client (SPA)**
 
-Пользователь взаимодействует с системой через веб-приложение, где он может создавать заявки, загружать документы и отслеживать статус их обработки.
+The user interacts with the system through a web application where they can create applications, upload documents, and track the status of their processing.
 
-Вся бизнес-логика сосредоточена на backend, а клиент отвечает только за отображение и отправку данных.
+All business logic is concentrated on the backend, and the client is only responsible for displaying and sending data.
 
 ### **3.2 Backend API**
 
-Backend является центральным оркестратором системы.
+The backend is the central orchestrator of the system.
 
-После получения заявки backend:
+After receiving an application, the backend:
 
-1. аутентифицирует пользователя и валидирует данные,
-2. сохраняет метаданные в PostgreSQL,
-3. загружает файл в Object Storage,
-4. формирует задачу и отправляет её в очередь.
+1. authenticates the user and validates data,
+2. saves metadata to PostgreSQL,
+3. uploads the file to Object Storage,
+4. forms a task and sends it to the queue.
 
-После обработки заявки агентом backend принимает результат через callback API. Получив отчет, backend:
+After the agent processes the application, the backend receives the result via callback API. Upon receiving the report, the backend:
 
-- сохраняет его,
-- обновляет статус заявки,
-- инициирует уведомление пользователя (например, через SSE).
+- saves it,
+- updates the application status,
+- initiates user notification (e.g., via SSE).
 
-Таким образом, backend полностью контролирует состояние системы и не делегирует хранение состояния агенту.
+Thus, the backend fully controls the system state and does not delegate state storage to the agent.
 
 ### **3.3 Task Queue**
 
-Очередь сообщений обеспечивает асинхронное взаимодействие между backend и агентом.
+The message queue provides asynchronous interaction between the backend and the agent.
 
-Она позволяет:
+It allows:
 
-- обрабатывать задачи с задержкой,
-- масштабировать воркеры,
-- повторять выполнение при сбоях.
+- processing tasks with delay,
+- scaling workers,
+- retrying execution on failures.
 
-Очередь передает агенту только описание задачи и необходимые ссылки/идентификаторы, без переноса состояния.
+The queue transfers to the agent only the task description and necessary links/identifiers, without transferring state.
 
 ### **3.4 AI Agent**
 
-AI-агент является независимым воркером, который извлекает задачи из очереди и выполняет их.
+The AI agent is an independent worker that extracts tasks from the queue and executes them.
 
-Процесс обработки включает:
+The processing process includes:
 
-- получение и интерпретацию задачи,
-- загрузку и анализ документа,
-- выполнение валидаций и внешних проверок,
-- формирование структурированного отчета.
+- receiving and interpreting the task,
+- downloading and analyzing the document,
+- performing validations and external checks,
+- forming a structured report.
 
-После завершения обработки агент отправляет результат обратно в backend через **HTTP callback**. Это ключевой момент: агент не изменяет состояние напрямую, а сообщает результат, оставляя backend ответственным за фиксацию изменений.
+After processing is complete, the agent sends the result back to the backend via **HTTP callback**. This is a key point: the agent does not change state directly, but reports the result, leaving the backend responsible for recording changes.
 
 ### **3.5 Agent Logic and Data**
 
-Логика обработки заявок задается через процедуры, хранящиеся в отдельной базе данных агента (SQLite). Это позволяет изменять поведение системы без модификации backend.
+The application processing logic is defined through procedures stored in a separate agent database (SQLite). This allows changing system behavior without modifying the backend.
 
-Агент использует:
+The agent uses:
 
-- инструменты для обработки документов,
-- механизмы валидации,
-- внешние запросы к mock-сервису,
-- knowledge base для контекста.
+- tools for document processing,
+- validation mechanisms,
+- external requests to a mock service,
+- knowledge base for context.
 
-Такой подход делает обработку декларативной и расширяемой.
+This approach makes processing declarative and extensible.
 
 ### **3.6 Data Storage**
 
-Система использует несколько типов хранилищ:
+The system uses several types of storage:
 
-- **PostgreSQL** — хранение пользователей, заявок и отчетов
-- **Object Storage** — хранение файлов
-- **SQLite (Agent DB)** — процедуры обработки
-- **Knowledge Base / Document DB** — вспомогательные данные для агента
+- **PostgreSQL** — storage of users, applications, and reports
+- **Object Storage** — file storage
+- **SQLite (Agent DB)** — processing procedures
+- **Knowledge Base / Document DB** — auxiliary data for the agent
 
-Разделение хранилищ позволяет независимо масштабировать разные части системы.
+Separation of storage allows independent scaling of different parts of the system.
 
 ## **4. Data Flow**
 
-Основной сценарий обработки:
+The main processing scenario:
 
-1. Пользователь создает заявку через SPA
-2. Backend сохраняет данные и файл
-3. Backend отправляет задачу в очередь
-4. AI-агент получает задачу и выполняет обработку
-5. Агент отправляет результат в backend через callback
-6. Backend сохраняет отчет и обновляет статус
-7. Пользователь получает обновление
+1. User creates an application through SPA
+2. Backend saves data and file
+3. Backend sends a task to the queue
+4. AI agent receives the task and performs processing
+5. Agent sends the result to the backend via callback
+6. Backend saves the report and updates the status
+7. User receives an update
 
-Ключевая особенность — **двусторонняя асинхронная коммуникация**: задача передается через очередь, а результат возвращается через callback.
+The key feature is **two-way asynchronous communication**: the task is transferred through the queue, and the result is returned via callback.
 
 ## **5. Communication Model**
 
-Система использует несколько моделей взаимодействия:
+The system uses several interaction models:
 
-- синхронное: клиент ↔ backend (REST API)
-- асинхронное: backend → очередь → агент
-- обратный вызов: агент → backend (HTTP callback)
-- push-уведомления: backend → клиент (SSE/WebSocket)
+- synchronous: client ↔ backend (REST API)
+- asynchronous: backend → queue → agent
+- callback: agent → backend (HTTP callback)
+- push notifications: backend → client (SSE/WebSocket)
 
-Такое разделение позволяет эффективно обрабатывать долгие операции без блокировки интерфейса.
+This separation allows efficient processing of long operations without blocking the interface.
 
 ## **6. Key Design Decisions**
 
-Ключевым решением является использование callback-механизма для возврата результатов обработки. Это позволяет агенту оставаться изолированным и не зависеть от внутренней модели данных backend.
+The key decision is using a callback mechanism for returning processing results. This allows the agent to remain isolated and independent of the backend's internal data model.
 
-Другим важным решением является выделение агента в отдельный сервис. Это дает возможность независимо масштабировать обработку заявок и эволюционировать AI-логику.
+Another important decision is separating the agent into an independent service. This provides the ability to independently scale application processing and evolve AI logic.
 
-Также система разделяет хранилища по типам данных, что упрощает поддержку и масштабирование.
+The system also separates storage by data types, which simplifies maintenance and scaling.
 
 ## **7. Non-Functional Considerations**
 
-Система ориентирована на горизонтальное масштабирование за счет увеличения числа агентов.
+The system is oriented toward horizontal scaling by increasing the number of agents.
 
-Надежность обеспечивается механизмами повторной обработки задач и тем, что backend остается единственным источником истины.
+Reliability is ensured by task retry mechanisms and the fact that the backend remains the single source of truth.
 
-Безопасность достигается через контроль доступа, изоляцию компонентов и ограниченный доступ к данным.
+Security is achieved through access control, component isolation, and limited data access.
 
 ## **8. Future Evolution**
 
-Возможные направления развития:
+Possible development directions:
 
-- multi-agent архитектура,
-- версионирование процедур,
-- интеграция с реальными внешними сервисами,
-- добавление этапов ручной проверки.
+- multi-agent architecture,
+- procedure versioning,
+- integration with real external services,
+- adding manual review stages.

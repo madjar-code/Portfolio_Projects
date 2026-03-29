@@ -1,232 +1,232 @@
-Этот документ дополняет общее описание требований и формализует модель данных системы, описывая ключевые сущности: **User, Application, Document, Procedure.**
+This document supplements the general requirements description and formalizes the system data model, describing key entities: **User, Application, Document, Procedure.**
 
 ---
 
-## **0. Контекст**
+## **0. Context**
 
-Документ создаётся в рамках проектирования учебного проекта **Bureaucratic AI Agent** — платформы для автоматизации бюрократических процедур с AI-агентом, включающей:
+The document is created as part of the **Bureaucratic AI Agent** educational project design — a platform for automating bureaucratic procedures with an AI agent, including:
 
-- аутентификацию через email/password,
-- создание заявок (Application) с загрузкой документов,
-- автоматическую обработку заявок AI-агентом,
-- отслеживание статусов и получение обратной связи,
-- базу знаний о процедурах.
+- authentication via email/password,
+- application creation (Application) with document upload,
+- automatic application processing by AI agent,
+- status tracking and feedback,
+- knowledge base about procedures.
 
-Ниже описаны **структуры данных**, **правила владения**, **жизненный цикл**, и **ограничения** для каждой сущности.
+Below are described **data structures**, **ownership rules**, **lifecycle**, and **constraints** for each entity.
 
 ---
 
-## **1. User (Пользователь)**
+## **1. User**
 
-### **1.1 Назначение**
+### **1.1 Purpose**
 
-Пользователь представляет гражданина, подающего заявки на бюрократические процедуры.
+The User represents a citizen submitting applications for bureaucratic procedures.
 
-### **1.2 Поля (Draft Schema)**
+### **1.2 Fields (Draft Schema)**
 
-- `id` — UUID, первичный ключ
-- `email` — строка, уникальная, используется для входа
-- `password_hash` — строка, хеш пароля (bcrypt/argon2)
-- `full_name` — строка, полное имя пользователя
-- `phone` — строка, опционально
-- `created_at` — datetime
-- `updated_at` — datetime
-- `is_active` — boolean, для soft delete
-- `is_verified` — boolean, верифицирована ли почта
-- `last_login_at` — datetime, опционально
+- `id` — UUID, primary key
+- `email` — string, unique, used for login
+- `password_hash` — string, password hash (bcrypt/argon2)
+- `full_name` — string, user's full name
+- `phone` — string, optional
+- `created_at` — datetime
+- `updated_at` — datetime
+- `is_active` — boolean, for soft delete
+- `is_verified` — boolean, whether email is verified
+- `last_login_at` — datetime, optional
 
-### **1.3 Правила поведения**
+### **1.3 Behavior Rules**
 
-- Пользователь не может видеть чужие заявки (строгая изоляция по `user_id`)
-- Вход через email + password (JWT токены)
-- Soft-delete удаляет:
-    - самого пользователя,
-    - его заявки (Request),
-    - его документы (Document).
+- User cannot view other users' applications (strict isolation by `user_id`)
+- Login via email + password (JWT tokens)
+- Soft-delete removes:
+    - the user themselves,
+    - their applications (Application),
+    - their documents (Document).
 
-### **1.4 Связи**
+### **1.4 Relationships**
 
-- User **1 → 0…N** Application
-- User **1 → 0…N** Document (через Application)
+- User **1 → 0…N** Application
+- User **1 → 0…N** Document (through Application)
 
-### **1.5 Индексы**
+### **1.5 Indexes**
 
-- `email` (unique)
+- `email` (unique)
 - `is_active`
 - `created_at`
 
 ---
 
-## **2. Procedure (Процедура)**
+## **2. Procedure**
 
-### **2.1 Назначение**
+### **2.1 Purpose**
 
-**Procedure** — это **легковесная обертка** вокруг текстового документа с инструкциями для AI-агента. Содержит минимальные метаданные и ссылку на документ с полным описанием процедуры.
+**Procedure** is a **lightweight wrapper** around a text document with instructions for the AI agent. It contains minimal metadata and a reference to a document with a full description of the procedure.
 
-### **2.2 Поля (Draft Schema)**
+### **2.2 Fields (Draft Schema)**
 
-- `id` — UUID
-- `name` — строка, название процедуры (например, "Получение паспорта МД")
-- `description` — текст, краткое описание (1-2 предложения)
-- `instruction_file_url` — строка, путь к файлу с инструкциями для AI-агента (S3/локальное хранилище)
-- `instruction_file_format` — строка, формат файла (TXT, MD, PDF)
-- `created_at` — datetime
-- `updated_at` — datetime
-- `is_active` — boolean
+- `id` — UUID
+- `name` — string, procedure name (e.g., "Passport Application MD")
+- `description` — text, brief description (1-2 sentences)
+- `instruction_file_url` — string, path to the instruction file for the AI agent (S3/local storage)
+- `instruction_file_format` — string, file format (TXT, MD, PDF)
+- `created_at` — datetime
+- `updated_at` — datetime
+- `is_active` — boolean
 
-### **2.3 Правила поведения**
+### **2.3 Behavior Rules**
 
-- Процедуры создаются через **seed данные / миграции** (нет UI для управления)
-- Пользователи могут только **просматривать список процедур** и выбирать их при создании заявки
-- AI-агент **читает файл инструкций** (`instruction_file_url`) для понимания, как обрабатывать заявку
-- Файл инструкций содержит:
-    - Требуемые документы
-    - Правила валидации
-    - Чеклист для проверки
-    - Промпты для AI-агента
-    - Примеры корректных заявок
+- Procedures are created through **seed data / migrations** (no UI for management)
+- Users can only **view the list of procedures** and select them when creating an application
+- The AI agent **reads the instruction file** (`instruction_file_url`) to understand how to process the application
+- The instruction file contains:
+    - Required documents
+    - Validation rules
+    - Checklist for verification
+    - Prompts for the AI agent
+    - Examples of correct applications
 
-### **2.4 Ограничения**
+### **2.4 Constraints**
 
-- Название процедуры должно быть **уникальным**
-- `instruction_file_url` не может быть пустым
-- Процедура не может быть удалена, если есть активные заявки
+- Procedure name must be **unique**
+- `instruction_file_url` cannot be empty
+- A procedure cannot be deleted if there are active applications
 
-### **2.5 Связи**
+### **2.5 Relationships**
 
 - Procedure 1 → 0…N Application
 
-### **2.6 Индексы**
+### **2.6 Indexes**
 
-- `name` (unique)
+- `name` (unique)
 - `is_active`
 
-### **2.7 Пример структуры файла инструкций**
+### **2.7 Example Instruction File Structure**
 
-**Файл:** `procedures/passport_application.md`
+**File:** `procedures/passport_application.md`
 
 ```
-# Процедура: Получение паспорта МД
+# Procedure: Passport Application MD
 
-## Требуемые документы
-1. Свидетельство о рождении (PDF/JPG)
-2. Фотография 3x4 (JPG/PNG)
-3. Заявление по форме 1П (PDF/DOCX)
+## Required Documents
+1. Birth Certificate (PDF/JPG)
+2. Photo 3x4 (JPG/PNG)
+3. Application Form 1P (PDF/DOCX)
 
-## Правила валидации
-- ФИО в заявлении должно совпадать с ФИО в свидетельстве о рождении
-- Фотография должна быть цветной, размером 3x4 см
-- Все документы должны быть читаемыми (не размытыми)
+## Validation Rules
+- Name in the application must match the name in the birth certificate
+- Photo must be color, size 3x4 cm
+- All documents must be readable (not blurry)
 
-## Чеклист для AI-агента
-- [ ] Проверить наличие всех 3 документов
-- [ ] Извлечь ФИО из свидетельства о рождении (OCR)
-- [ ] Извлечь ФИО из заявления (OCR)
-- [ ] Сравнить ФИО (должны совпадать)
-- [ ] Проверить качество фотографии
+## AI Agent Checklist
+- [ ] Check that all 3 documents are present
+- [ ] Extract name from birth certificate (OCR)
+- [ ] Extract name from application (OCR)
+- [ ] Compare names (must match)
+- [ ] Check photo quality
 
-## Промпт для AI-агента
-"Ты — помощник по проверке заявок на получение паспорта МД. 
-Проверь, что все документы загружены, извлеки ФИО из документов 
-и убедись, что они совпадают. Если есть проблемы, опиши их понятным языком."
+## AI Agent Prompt
+"You are an assistant for checking passport applications for MD.
+Check that all documents are uploaded, extract names from documents
+and ensure they match. If there are issues, describe them in clear language."
 
-## Примеры проблем
-- "ФИО в заявлении (Иванов Иван Иванович) не совпадает с ФИО в свидетельстве (Иванов И.И.)"
-- "Отсутствует фотография 3x4"
-- "Свидетельство о рождении нечитаемо (размытое изображение)"
+## Example Issues
+- "Name in application (Ivanov Ivan Ivanovich) does not match name in certificate (Ivanov I.I.)"
+- "Photo 3x4 is missing"
+- "Birth certificate is unreadable (blurry image)"
 ```
 
 ---
 
-## **3. Application (Заявка)**
+## **3. Application**
 
-### **3.1 Назначение**
+### **3.1 Purpose**
 
-**Application** — заявка пользователя на конкретную процедуру. Содержит данные формы и загруженные документы.
+**Application** is a user's application for a specific procedure. It contains form data and uploaded documents.
 
-### **3.2 Поля (Draft Schema)**
+### **3.2 Fields (Draft Schema)**
 
-- `id` — UUID
-- `user_id` — внешний ключ на User
-- `procedure_id` — внешний ключ на Procedure
-- `application_number` — строка, уникальный номер заявки (формат: `REQ-YYYYMMDD-XXXXX`)
-- `form_data` — JSON, данные заполненной формы
-- `created_at` — datetime
-- `updated_at` — datetime
-- `submitted_at` — datetime, когда заявка была отправлена
-- `is_active` — boolean
+- `id` — UUID
+- `user_id` — foreign key to User
+- `procedure_id` — foreign key to Procedure
+- `application_number` — string, unique application number (format: `APP-YYYYMMDD-XXXXX`)
+- `form_data` — JSON, filled form data
+- `created_at` — datetime
+- `updated_at` — datetime
+- `submitted_at` — datetime, when the application was submitted
+- `is_active` — boolean
 
-### **3.3 Правила поведения**
+### **3.3 Behavior Rules**
 
-- Заявка принадлежит только одному пользователю
-- Пользователь может:
-    - создавать заявку (выбор процедуры)
-    - заполнять форму
-    - загружать документы
-    - отправлять заявку на обработку
-    - просматривать отчет AI-агента
-- При soft-delete Application все связанные Document и AIReport также помечаются удаленными
+- The application belongs to only one user
+- The user can:
+    - create an application (procedure selection)
+    - fill out the form
+    - upload documents
+    - submit the application for processing
+    - view the AI agent report
+- Upon soft-delete of Application, all related Document and AIReport are also marked as deleted
 
-### **3.4 Ограничения**
+### **3.4 Constraints**
 
-- Минимум 1 документ должен быть загружен перед отправкой
-- Максимум 10 документов на заявку (NFR-011)
-- Заявка не может существовать без владельца и процедуры
+- Minimum 1 document must be uploaded before submission
+- Maximum 10 documents per application (NFR-011)
+- An application cannot exist without an owner and procedure
 
-### **3.5 Связи**
+### **3.5 Relationships**
 
 - `Application N → 1 User`
 - `Application N → 1 Procedure`
 - `Application 1 → 1…N Document`
 - `Application 1 → 0…1 AIReport`
 
-### **3.6 Индексы**
+### **3.6 Indexes**
 
 - `user_id`
 - `procedure_id`
-- `application_number` (unique)
+- `application_number` (unique)
 - `created_at`
 - `submitted_at`
 
 ---
 
-## **4. Document (Документ)**
+## **4. Document**
 
-### **4.1 Назначение**
+### **4.1 Purpose**
 
-**Document** представляет физический файл документа, загруженный пользователем к заявке.
+**Document** represents a physical document file uploaded by the user to an application.
 
-### **4.2 Поля (Draft Schema)**
+### **4.2 Fields (Draft Schema)**
 
-- `id` — UUID
-- `application_id` — внешний ключ на Application
-- `user_id` — дублирующий FK для удобства фильтрации
-- `file_name` — строка, оригинальное имя файла
-- `file_url` — строка, путь к файлу в S3
-- `file_size` — integer, размер в байтах
-- `file_format` — строка, формат файла (PDF, DOCX, JPG, PNG)
-- `uploaded_at` — datetime
-- `is_active` — boolean
+- `id` — UUID
+- `application_id` — foreign key to Application
+- `user_id` — duplicate FK for convenient filtering
+- `file_name` — string, original file name
+- `file_url` — string, path to file in S3
+- `file_size` — integer, size in bytes
+- `file_format` — string, file format (PDF, DOCX, JPG, PNG)
+- `uploaded_at` — datetime
+- `is_active` — boolean
 
-### **4.3 Правила поведения**
+### **4.3 Behavior Rules**
 
-- Документ принадлежит одной заявке
-- Удаление Application удаляет все Document
-- Пользователь может загружать файлы пакетно (multi-upload)
-- AI-агент извлекает данные из документов (OCR/парсинг)
+- The document belongs to one application
+- Deleting an Application deletes all Documents
+- The user can upload files in batch (multi-upload)
+- The AI agent extracts data from documents (OCR/parsing)
 
-### **4.4 Ограничения**
+### **4.4 Constraints**
 
-- Максимальный размер файла: **10 МБ**
-- Допустимые форматы: **PDF, DOCX, JPG, PNG**
-- Максимальное количество документов: **10**
+- Maximum file size: **10 MB**
+- Allowed formats: **PDF, DOCX, JPG, PNG**
+- Maximum number of documents: **10**
 
-### **4.5 Связи**
+### **4.5 Relationships**
 
 - `Document N → 1 Application`
 - `Document N → 1 User`
 
-### **4.6 Индексы**
+### **4.6 Indexes**
 
 - `application_id`
 - `user_id`
@@ -234,44 +234,44 @@
 
 ---
 
-## **5. AIReport (Отчет AI-агента)**
+## **5. AIReport**
 
-### **5.1 Назначение**
+### **5.1 Purpose**
 
-**AIReport** — результат обработки заявки AI-агентом. Пользователь может просматривать этот отчет.
+**AIReport** is the result of processing an application by the AI agent. The user can view this report.
 
-### **5.2 Поля (Draft Schema)**
+### **5.2 Fields (Draft Schema)**
 
-- `id` — UUID
-- `application_id` — внешний ключ на Application (unique)
-- `validation_result` — JSON, результат проверки на полноту
-- `extracted_data` — JSON, данные, извлеченные из документов (OCR)
-- `issues_found` — JSON/Array, список найденных проблем
-- `recommendations` — текст, рекомендации для пользователя
-- `processing_time_seconds` — integer, время обработки
-- `ai_model_used` — строка, модель (`gpt-4`, `gpt-3.5-turbo`)
-- `created_at` — datetime
-- `updated_at` — datetime
+- `id` — UUID
+- `application_id` — foreign key to Application (unique)
+- `validation_result` — JSON, result of completeness check
+- `extracted_data` — JSON, data extracted from documents (OCR)
+- `issues_found` — JSON/Array, list of found issues
+- `recommendations` — text, recommendations for the user
+- `processing_time_seconds` — integer, processing time
+- `ai_model_used` — string, model (`gpt-4`, `gpt-3.5-turbo`)
+- `created_at` — datetime
+- `updated_at` — datetime
 
-### **5.3 Правила поведения**
+### **5.3 Behavior Rules**
 
-- Отчет создается AI-агентом после обработки заявки
-- Один отчет на одну заявку (1:1)
-- Пользователь может просматривать отчет
-- Отчет может быть обновлен при повторной обработке
+- The report is created by the AI agent after processing the application
+- One report per application (1:1)
+- The user can view the report
+- The report can be updated upon reprocessing
 
-### **5.4 Связи**
+### **5.4 Relationships**
 
 - `AIReport 1 → 1 Application`
 
-### **5.5 Индексы**
+### **5.5 Indexes**
 
-- `application_id` (unique)
+- `application_id` (unique)
 - `created_at`
 
 ---
 
-## **6. Жизненный цикл сущностей**
+## **6. Entity Lifecycle**
 
 ### **6.1 User**
 
@@ -306,7 +306,7 @@ created (after AI processing) → available → [updated on reprocessing]
 
 ---
 
-## 7. ER-диаграмма (Mermaid)
+## 7. ER Diagram (Mermaid)
 
 ```mermaid
 erDiagram
@@ -378,12 +378,12 @@ erDiagram
 
 ---
 
-## 8. Краткое описание связей
+## 8. Relationship Summary
 
-| Связь | Тип | Описание |
+| Relationship | Type | Description |
 | --- | --- | --- |
-| User → Application | 1:N | Пользователь может создать много заявок |
-| User → Document | 1:N | Пользователь может загрузить много документов (через заявки) |
-| Procedure → Application | 1:N | Процедура может быть использована в многих заявках |
-| Application → Document | 1:N | Заявка содержит минимум 1, максимум 10 документов |
-| Application → AIReport | 1:0..1 | Заявка может иметь один отчет AI-агента (или не иметь) |
+| User → Application | 1:N | A user can create many applications |
+| User → Document | 1:N | A user can upload many documents (through applications) |
+| Procedure → Application | 1:N | A procedure can be used in many applications |
+| Application → Document | 1:N | An application contains minimum 1, maximum 10 documents |
+| Application → AIReport | 1:0..1 | An application can have one AI agent report (or none) |

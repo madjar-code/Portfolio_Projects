@@ -1,12 +1,12 @@
 ## **1. Overview**
 
-Жизненный цикл заявки моделируется как конечный автомат с фиксированными состояниями — от создания до результата обработки.
+The application lifecycle is modeled as a finite state machine with fixed states — from creation to processing result.
 
-Каждая заявка:
+Each application:
 
-- обрабатывается один раз,
-- не поддерживает повторную отправку,
-- завершается в одном из финальных состояний.
+- is processed once,
+- does not support resubmission,
+- ends in one of the final states.
 
 ## **2. State Diagram**
 
@@ -14,17 +14,17 @@
 stateDiagram-v2
     [*] --> DRAFT
     
-    DRAFT --> DRAFT: Обновление формы/документа
+    DRAFT --> DRAFT: Form/document update
     DRAFT --> SUBMITTED: POST /applications/{id}/submit
 
-    SUBMITTED --> PROCESSING: Агент извлек задачу из очереди
+    SUBMITTED --> PROCESSING: Agent pulls task from queue
 
-    PROCESSING --> FAILED: Системная ошибка (пользователь не видит этот статус)
+    PROCESSING --> FAILED: System error (user does not see this status)
 
-    PROCESSING --> REJECTED: AI-валидация отказала
-    PROCESSING --> ACCEPTED: AI-валидация прошла
+    PROCESSING --> REJECTED: AI validation rejected
+    PROCESSING --> ACCEPTED: AI validation passed
 
-    FAILED --> PROXY_STATUS: Спрятать проблему от пользователя
+    FAILED --> PROXY_STATUS: Hide problem from user
     PROXY_STATUS --> [*]
     REJECTED --> [*]
     ACCEPTED --> [*]
@@ -32,27 +32,27 @@ stateDiagram-v2
 
 ## **3. States**
 
-- **DRAFT** — создание и редактирование заявки
-- **SUBMITTED** — заявка прошла первичную валидацию и отправлена на обработку
-- **PROCESSING** — агент обрабатывает заявку
-- **FAILED (internal)** — системная ошибка (не показывается пользователю)
-- **REJECTED** — заявка отклонена по результатам AI-валидации
-- **ACCEPTED** — заявка успешно прошла проверку
-- **PROXY_STATUS** — пользовательское представление ошибки
+- **DRAFT** — application creation and editing
+- **SUBMITTED** — application passed initial validation and sent for processing
+- **PROCESSING** — agent is processing the application
+- **FAILED (internal)** — system error (not shown to user)
+- **REJECTED** — application rejected based on AI validation results
+- **ACCEPTED** — application successfully passed verification
+- **PROXY_STATUS** — user-facing error representation
 
 ## **4. Flow Summary**
 
-1. `DRAFT → SUBMITTED` — пользователь отправляет заявку
-2. `SUBMITTED → PROCESSING` — агент начинает обработку
-3. Далее возможны исходы:
+1. `DRAFT → SUBMITTED` — user submits the application
+2. `SUBMITTED → PROCESSING` — agent starts processing
+3. Possible outcomes:
     - `PROCESSING → ACCEPTED`
     - `PROCESSING → REJECTED`
     - `PROCESSING → FAILED → PROXY_STATUS`
 
-Финальные состояния: `ACCEPTED`, `REJECTED`, `PROXY_STATUS`.
+Final states: `ACCEPTED`, `REJECTED`, `PROXY_STATUS`.
 
 ## **5. Notes**
 
-- Backend — единственный источник истины для статуса
-- `FAILED` используется только внутри системы
-- Модель упрощена за счет отсутствия retry / resubmission
+- Backend is the single source of truth for status
+- `FAILED` is used only internally within the system
+- The model is simplified by the absence of retry / resubmission

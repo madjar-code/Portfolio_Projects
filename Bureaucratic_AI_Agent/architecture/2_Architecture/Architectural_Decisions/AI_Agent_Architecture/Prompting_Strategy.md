@@ -1,125 +1,125 @@
 ## **1. Overview**
 
-Промптинг является центральным механизмом работы AI-агента. Именно через промпт агент получает инструкции, контекст и ограничения для обработки заявки.
+Prompting is the central mechanism of the AI agent's operation. It is through the prompt that the agent receives instructions, context, and constraints for processing an application.
 
-Ключевая особенность системы — **динамическая композиция промптов**: финальный промпт собирается в runtime из процедуры, метаданных заявки и документов. Это позволяет агенту адаптироваться к различным типам процедур без изменения кода.
+A key feature of the system is **dynamic prompt composition**: the final prompt is assembled at runtime from the procedure, application metadata, and documents. This allows the agent to adapt to various types of procedures without changing the code.
 
-Промпт выполняет несколько функций:
+The prompt performs several functions:
 
-- задаёт роль и контекст работы агента,
-- передаёт инструкции процедуры,
-- предоставляет данные для анализа,
-- определяет формат выходных данных,
-- направляет reasoning процесс.
+- sets the agent's role and working context,
+- transmits procedure instructions,
+- provides data for analysis,
+- defines the output data format,
+- guides the reasoning process.
 
 ---
 
 ## **2. Prompt Architecture**
 
-Промпт агента состоит из нескольких логических блоков, каждый из которых выполняет свою роль.
+The agent's prompt consists of several logical blocks, each serving its own purpose.
 
 ### **2.1 System Prompt**
 
-Определяет роль агента и общие правила работы.
+Defines the agent's role and general working rules.
 
-**Назначение:**
+**Purpose:**
 
-- установка контекста ("ты — эксперт по валидации документов")
-- определение стиля работы (аналитический, внимательный к деталям)
-- задание общих ограничений (не придумывать данные, быть объективным)
+- setting the context ("you are a document validation expert")
+- defining the working style (analytical, detail-oriented)
+- setting general constraints (do not invent data, be objective)
 
-**Характеристики:**
+**Characteristics:**
 
-- статичен для всех задач
-- задаёт "личность" агента
-- определяет tone of voice
+- static for all tasks
+- sets the agent's "personality"
+- defines the tone of voice
 
 ### **2.2 Procedure Instructions**
 
-Динамический блок, загружаемый из Procedure Database.
+A dynamic block loaded from the Procedure Database.
 
-**Содержит:**
+**Contains:**
 
-- описание процедуры
-- требуемые документы
-- правила валидации
-- критерии принятия решения
-- примеры корректных/некорректных заявок
+- procedure description
+- required documents
+- validation rules
+- decision-making criteria
+- examples of correct/incorrect applications
 
-**Роль:**
+**Role:**
 
-> Процедура — это **runtime-логика** агента. Она определяет, что именно нужно проверить и как интерпретировать результаты.
+> The procedure is the agent's **runtime logic**. It defines what exactly needs to be checked and how to interpret the results.
 > 
 
 ### **2.3 Application Context**
 
-Данные конкретной заявки.
+Data for a specific application.
 
-**Включает:**
+**Includes:**
 
-- метаданные заявки (form_data)
-- ссылка на документ в Object Storage
-- метаданные документа (filename, format, size)
+- application metadata (form_data)
+- link to document in Object Storage
+- document metadata (filename, format, size)
 
-**Важно:**
+**Important:**
 
-> Сам текст документа **не включается в промпт**. Агент получает только ссылку и читает документ через инструменты (OCR, PDF parser) по мере необходимости.
+> The document text itself is **not included in the prompt**. The agent receives only a link and reads the document through tools (OCR, PDF parser) as needed.
 > 
 
-**Формат:**
+**Format:**
 
 ```
-# Заявка ID: {application_id}
+# Application ID: {application_id}
 
-## Данные формы:
+## Form Data:
 {form_data as JSON}
 
-## Документ:
+## Document:
 - Filename: passport_scan.pdf
 - Format: PDF
 - Size: 2.3 MB
 - Storage URL: s3://bucket/user_123/app_456/doc.pdf
 
-Используй инструменты для чтения документа по мере необходимости.
+Use tools to read the document as needed.
 ```
 
 ### **2.4 Task Definition**
 
-Явная формулировка задачи.
+Explicit formulation of the task.
 
-**Пример:**
+**Example:**
 
 ```
-Твоя задача:
-1. Проанализировать предоставленные документы
-2. Проверить соответствие требованиям процедуры
-3. Извлечь структурированные данные
-4. Выявить проблемы и несоответствия
-5. Принять решение: ACCEPT или REJECT
-6. Сформировать отчёт в заданном формате
+Your task:
+1. Analyze the provided documents
+2. Check compliance with procedure requirements
+3. Extract structured data
+4. Identify problems and discrepancies
+5. Make a decision: ACCEPT or REJECT
+6. Generate a report in the specified format
 ```
 
 ### **2.5 Output Format Specification**
 
-Определение структуры выходных данных.
+Definition of the output data structure.
 
-**Используется:**
+**Used:**
 
 - JSON Schema
-- Pydantic models (через structured output)
-- примеры корректного формата
+- Pydantic models (via structured output)
+- examples of correct format
 
-**Цель:**
+**Goal:**
 
-- гарантировать парсируемость ответа
-- обеспечить консистентность структуры
-- упростить валидацию результата
+- guarantee response parsability
+- ensure structure consistency
+- simplify result validation
 
 ---
 
 ## **3. Prompt Composition**
 
-Финальный промпт собирается динамически компонентом **Prompt Builder**.
+The final prompt is dynamically assembled by the **Prompt Builder** component.
 
 ### **3.1 Composition Pipeline**
 
@@ -139,114 +139,114 @@
 7. Add Output Format Schema
 ```
 
-**Важно:**
+**Important:**
 
-> Документ **не парсится заранее**. Агент получает только ссылку и читает его через инструменты по мере необходимости.
+> The document is **not parsed in advance**. The agent receives only a link and reads it through tools as needed.
 > 
 
 ### **3.2 Context Window Management**
 
-LLM имеет ограниченный context window. Система решает эту проблему через **ленивую загрузку документов**.
+LLM has a limited context window. The system solves this problem through **lazy document loading**.
 
-**Ключевой принцип:**
+**Key principle:**
 
-> Документ **не загружается в промпт целиком**. Агент получает только метаданные и читает нужные части через инструменты.
+> The document is **not loaded into the prompt entirely**. The agent receives only metadata and reads the necessary parts through tools.
 > 
 
-**Преимущества:**
+**Advantages:**
 
-- **экономия токенов** — в промпт попадает только релевантная информация
-- **гибкость** — агент сам решает, какие части документа читать
-- **масштабируемость** — можно обрабатывать большие документы
+- **token savings** — only relevant information enters the prompt
+- **flexibility** — the agent decides which parts of the document to read
+- **scalability** — large documents can be processed
 
-**Инструменты для работы с документом:**
+**Tools for working with documents:**
 
-- `read_document_page(page_number)` — прочитать конкретную страницу
-- `ocr_document_region(page, x, y, width, height)` — OCR для области
-- `extract_field_from_document(field_name)` — извлечь конкретное поле
-- `search_in_document(query)` — найти текст в документе
+- `read_document_page(page_number)` — read a specific page
+- `ocr_document_region(page, x, y, width, height)` — OCR for a region
+- `extract_field_from_document(field_name)` — extract a specific field
+- `search_in_document(query)` — find text in the document
 
-**Мониторинг:**
+**Monitoring:**
 
-- отслеживание размера промпта (в токенах)
-- количество tool calls для чтения документа
-- эффективность извлечения данных
+- tracking prompt size (in tokens)
+- number of tool calls for document reading
+- data extraction efficiency
 
 ### **3.3 Dynamic Content Injection**
 
-Некоторые части промпта добавляются условно:
+Some parts of the prompt are added conditionally:
 
-- **Few-shot examples** — если процедура содержит примеры (из Knowledge Base)
-- **Previous attempts** — если это retry после ошибки
-- **Reflection notes** — если агент выполняет self-correction
-- **Partial results** — если агент уже извлёк некоторые данные
+- **Few-shot examples** — if the procedure contains examples (from Knowledge Base)
+- **Previous attempts** — if this is a retry after an error
+- **Reflection notes** — if the agent is performing self-correction
+- **Partial results** — if the agent has already extracted some data
 
 ## **4. Prompting Techniques**
 
-Агент использует несколько техник для улучшения качества reasoning.
+The agent uses several techniques to improve reasoning quality.
 
 ### **4.1 Chain-of-Thought (CoT)**
 
-Агент явно формулирует промежуточные шаги рассуждения.
+The agent explicitly formulates intermediate reasoning steps.
 
-**Реализация:**
+**Implementation:**
 
 ```
-Перед принятием решения:
-1. Опиши, что ты видишь в документах
-2. Сравни с требованиями процедуры
-3. Выяви несоответствия
-4. Сделай вывод
+Before making a decision:
+1. Describe what you see in the documents
+2. Compare with procedure requirements
+3. Identify discrepancies
+4. Draw a conclusion
 ```
 
-**Преимущества:**
+**Advantages:**
 
-- улучшает accuracy
-- делает reasoning прозрачным
-- упрощает debugging
+- improves accuracy
+- makes reasoning transparent
+- simplifies debugging
 
 ### **4.2 ReAct (Reasoning + Acting)**
 
-Агент чередует reasoning и действия (tool calls).
+The agent alternates between reasoning and actions (tool calls).
 
-**Цикл:**
+**Cycle:**
 
 ```
 Thought → Action → Observation → Thought → ...
 ```
 
-**Пример:**
+**Example:**
 
 ```
-Thought: "Нужно извлечь ФИО из паспорта"
+Thought: "Need to extract full name from passport"
 Action: extract_field(document_id="passport", field="full_name")
-Observation: "Иванов Иван Иванович"
-Thought: "Теперь нужно сравнить с данными формы"
+Observation: "Ivanov Ivan Ivanovich"
+Thought: "Now need to compare with form data"
 ```
 
-Этот паттерн реализован через **Reasoning Loop** компонент (см. диаграмму).
+This pattern is implemented through the **Reasoning Loop** component (see diagram).
 
 ### **4.3 Self-Consistency**
 
-Для критичных решений агент может генерировать несколько вариантов ответа и выбирать наиболее частый.
+For critical decisions, the agent can generate multiple response variants and choose the most frequent one.
 
-**Применение:**
+**Application:**
 
-- финальное решение ACCEPT/REJECT
-- извлечение критичных полей (даты, номера)
+- final ACCEPT/REJECT decision
+- extraction of critical fields (dates, numbers)
 
 **Trade-off:**
 
-- увеличивает latency и cost
-- повышает надёжность
+- increases latency and cost
+- improves reliability
 
 ## **5. Prompt Versioning**
 
-Промпты эволюционируют со временем. Система поддерживает версионирование.
+Prompts evolve over time. The system supports versioning.
 
 ### **5.1 Version Control**
 
-Каждая процедура имеет версию промпта:
+Each procedure has a prompt version:
 
 ```sql
 CREATE TABLE procedures (
@@ -260,27 +260,27 @@ CREATE TABLE procedures (
 
 ### **5.2 A/B Testing**
 
-Новые версии промптов тестируются на подмножестве задач:
+New prompt versions are tested on a subset of tasks:
 
-- 90% задач используют stable version
-- 10% задач используют experimental version
-- метрики сравниваются
+- 90% of tasks use the stable version
+- 10% of tasks use the experimental version
+- metrics are compared
 
 ### **5.3 Rollback Strategy**
 
-При деградации качества возможен откат к предыдущей версии:
+If quality degrades, rollback to the previous version is possible:
 
-- мониторинг accuracy после деплоя новой версии
-- автоматический rollback при падении метрик
-- manual override для критичных случаев
+- monitoring accuracy after deploying a new version
+- automatic rollback when metrics drop
+- manual override for critical cases
 
 ## **6. Knowledge Base and Procedure Storage**
 
-Данные о процедурах хранятся в двух местах.
+Procedure data is stored in two places.
 
 ### **6.1 Procedure Database (SQLite)**
 
-Хранит **метаданные процедур**:
+Stores **procedure metadata**:
 
 ```sql
 CREATE TABLE procedures (
@@ -289,23 +289,23 @@ CREATE TABLE procedures (
     description TEXT,
     version TEXT,
     required_document_types TEXT,  -- JSON array
-    instruction_file_path TEXT,    -- Путь к файлу инструкций
+    instruction_file_path TEXT,    -- Path to instruction file
     created_at TIMESTAMP,
     updated_at TIMESTAMP
 );
 ```
 
-**Роль:**
+**Role:**
 
-- быстрый поиск процедуры по ID
-- версионирование
-- метаинформация для фильтрации
+- quick procedure search by ID
+- versioning
+- meta information for filtering
 
 ### **6.2 Knowledge Base (File Storage)**
 
-Хранит **полные инструкции процедур** в виде текстовых файлов (Markdown).
+Stores **full procedure instructions** as text files (Markdown).
 
-**Структура:**
+**Structure:**
 
 ```
 knowledge_base/
@@ -319,71 +319,71 @@ knowledge_base/
     └── ...
 ```
 
-**Содержимое файла процедуры:**
+**Procedure file contents:**
 
 ```markdown
-# Процедура: Получение паспорта МД
+# Procedure: Passport MD Application
 
-## Описание
+## Description
 ...
 
-## Требуемые документы
+## Required Documents
 ...
 
-## Правила валидации
+## Validation Rules
 ...
 
-## Промпт для агента
+## Agent Prompt
 ...
 
-## Примеры
-### Пример 1: Корректная заявка
+## Examples
+### Example 1: Correct Application
 ...
 
-### Пример 2: Типичная ошибка
+### Example 2: Typical Error
 ...
 ```
 
 ### **6.3 Loading Process**
 
-При получении задачи:
+When receiving a task:
 
 ```
-1. Agent получает procedure_id из задачи
+1. Agent receives procedure_id from the task
    ↓
-2. Загружает метаданные из SQLite
+2. Loads metadata from SQLite
    ↓
-3. Читает файл инструкций из Knowledge Base
+3. Reads instruction file from Knowledge Base
    ↓
-4. Включает инструкции в промпт
+4. Includes instructions in the prompt
 ```
 
 ### **6.4 Example Types in Knowledge Base**
 
-- **Positive examples** — корректные заявки
-- **Negative examples** — типичные ошибки
-- **Edge cases** — сложные пограничные случаи
-- **Clarifications** — пояснения к неоднозначным правилам
+- **Positive examples** — correct applications
+- **Negative examples** — typical errors
+- **Edge cases** — complex boundary cases
+- **Clarifications** — explanations for ambiguous rules
 
-Примеры включаются в промпт как **few-shot learning** для улучшения качества работы агента.
+Examples are included in the prompt as **few-shot learning** to improve the agent's performance quality.
 
 ## **7. Summary**
 
-Промптинг в системе — это не статичный текст, а **динамический процесс композиции контекста**.
+Prompting in the system is not static text, but a **dynamic context composition process**.
 
-Ключевые принципы:
+Key principles:
 
-- **модульность** — промпт собирается из независимых блоков
-- **адаптивность** — содержимое зависит от процедуры и данных
-- **ленивая загрузка** — документы читаются через инструменты, а не включаются в промпт
-- **версионируемость** — промпты эволюционируют и тестируются
-- **прозрачность** — reasoning процесс явно формулируется
-- **эффективность** — минимизация использования context window
+- **modularity** — the prompt is assembled from independent blocks
+- **adaptability** — content depends on the procedure and data
+- **lazy loading** — documents are read through tools, not included in the prompt
+- **versioning** — prompts evolve and are tested
+- **transparency** — the reasoning process is explicitly formulated
+- **efficiency** — minimization of context window usage
 
-**Архитектура хранения:**
+**Storage architecture:**
 
-- **SQLite** — метаданные процедур (быстрый поиск)
-- **Knowledge Base** — полные инструкции процедур (файлы)
-- **Object Storage** — документы пользователей (читаются по требованию)
+- **SQLite** — procedure metadata (quick search)
+- **Knowledge Base** — full procedure instructions (files)
+- **Object Storage** — user documents (read on demand)
 
-Prompt Builder (см. диаграмму) отвечает за всю логику композиции и является критичным компонентом системы.
+The Prompt Builder (see diagram) is responsible for all composition logic and is a critical component of the system.

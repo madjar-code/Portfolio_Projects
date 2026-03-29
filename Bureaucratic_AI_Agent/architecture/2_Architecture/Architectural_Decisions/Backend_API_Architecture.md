@@ -1,276 +1,276 @@
 ## **1. Overview**
 
-Backend API является центральным компонентом системы и выполняет роль оркестратора. Он отвечает за управление жизненным циклом заявок, взаимодействие с пользователями и координацию обработки через AI-агента.
+The Backend API is the central component of the system and serves as an orchestrator. It is responsible for managing the application lifecycle, user interaction, and coordinating processing through the AI agent.
 
-Backend не содержит логики анализа документов — его задача заключается в приеме, хранении и маршрутизации данных, а также в обеспечении надежного и согласованного состояния системы.
+The backend does not contain document analysis logic — its task is to receive, store, and route data, as well as ensure reliable and consistent system state.
 
-Ключевой архитектурный принцип — разделение ответственности: backend управляет состоянием, а обработка делегируется внешнему AI-агенту через асинхронную очередь задач.
+The key architectural principle is separation of responsibilities: the backend manages state, and processing is delegated to an external AI agent through an asynchronous task queue.
 
 ## **2. Technology Stack**
 
-Backend реализован с использованием Django-стека, ориентированного на быстрый development и надежную работу с данными.
+The backend is implemented using a Django stack, oriented toward fast development and reliable data handling.
 
-Основные компоненты:
+Main components:
 
-- **Django** — основной веб-фреймворк
-- **Django REST Framework (DRF)** — построение API
-- **PostgreSQL** — основная база данных
-- **Django ORM** — работа с БД
-- **Django Migrations** — управление схемой БД
-- **Pydantic (опционально)** — валидация внешних данных (например, callback)
-- **Object Storage (S3 / MinIO)** — хранение файлов
-- **Task Queue (Celery + Redis/RabbitMQ)** — асинхронные задачи
+- **Django** — main web framework
+- **Django REST Framework (DRF)** — API construction
+- **PostgreSQL** — main database
+- **Django ORM** — database operations
+- **Django Migrations** — database schema management
+- **Pydantic (optional)** — external data validation (e.g., callback)
+- **Object Storage (S3 / MinIO)** — file storage
+- **Task Queue (Celery + Redis/RabbitMQ)** — asynchronous tasks
 
-Такой стек позволяет строить масштабируемое API с минимальным количеством инфраструктурного кода и высокой скоростью разработки.
+This stack allows building scalable APIs with minimal infrastructure code and high development speed.
 
 ## **3. Architectural Layers**
 
-Несмотря на Django-style организацию, в системе сохраняется логическое разделение ответственности.
+Despite Django-style organization, the system maintains logical separation of responsibilities.
 
 ### **API Layer (Views / DRF)**
 
-Отвечает за обработку HTTP-запросов. Здесь происходит:
+Responsible for handling HTTP requests. Here occurs:
 
-- маршрутизация (urls.py),
-- валидация входных данных (serializers),
-- аутентификация и permissions,
-- преобразование запросов в вызовы бизнес-логики.
+- routing (urls.py),
+- input data validation (serializers),
+- authentication and permissions,
+- transforming requests into business logic calls.
 
-Этот слой остается тонким и не содержит сложной логики.
+This layer remains thin and does not contain complex logic.
 
 ### **Service Layer (Services / Domain Logic)**
 
-Хотя Django по умолчанию не требует сервисного слоя, в данной системе он используется явно.
+Although Django by default does not require a service layer, in this system it is used explicitly.
 
-Он отвечает за:
+It is responsible for:
 
-- валидацию бизнес-правил,
-- управление жизненным циклом заявок,
-- координацию работы моделей,
-- постановку задач в очередь,
-- обработку callback от AI-агента.
+- business rule validation,
+- application lifecycle management,
+- model coordination,
+- task queuing,
+- handling callbacks from the AI agent.
 
-Бизнес-логика **не размещается во views или моделях**, а централизуется в сервисах.
+Business logic **is not placed in views or models**, but is centralized in services.
 
 ### **Data Access Layer (Django ORM)**
 
-Работа с базой данных осуществляется через Django ORM.
+Database operations are performed through Django ORM.
 
-Особенности:
+Features:
 
-- модели являются источником истины для схемы БД
-- QuerySet используется как основной инструмент выборки
-- транзакции управляются через `transaction.atomic`
+- models are the source of truth for the database schema
+- QuerySet is used as the main selection tool
+- transactions are managed through `transaction.atomic`
 
-Отдельный repository-слой не выделяется, так как Django ORM уже инкапсулирует доступ к данным.
+A separate repository layer is not distinguished, as Django ORM already encapsulates data access.
 
 ### **Infrastructure Layer**
 
-Содержит интеграции с внешними системами:
+Contains integrations with external systems:
 
-- очередь задач (Celery),
+- task queue (Celery),
 - object storage,
-- конфигурация Django settings,
-- внешние клиенты.
+- Django settings configuration,
+- external clients.
 
-Этот слой изолирует инфраструктурные детали от бизнес-логики.
+This layer isolates infrastructure details from business logic.
 
 ## **4. Backend API Structure**
 
-Backend API организован как монолитное Django-приложение с модульной структурой, основанной на доменных приложениях (apps).
+The Backend API is organized as a monolithic Django application with a modular structure based on domain applications (apps).
 
-Структура отражает основные бизнес-домены и использует конвенции Django, при этом сохраняя явное разделение ответственности внутри каждого модуля:
+The structure reflects the main business domains and uses Django conventions, while maintaining explicit separation of responsibilities within each module:
 
-- `apps/` — доменные приложения (auth и applications, потом может другое)
-- `api/` — слой API (views, serializers, endpoints)
-- `services/` — бизнес-логика и оркестрация процессов
-- `models.py` — ORM-модели (внутри каждого app)
-- `managers.py` — кастомные QuerySet и менеджеры моделей
-- `tasks/` — асинхронные задачи (Celery)
-- `migrations/` — миграции базы данных (per app)
-- `admin.py` — административная панель Django
+- `apps/` — domain applications (auth and applications, possibly others later)
+- `api/` — API layer (views, serializers, endpoints)
+- `services/` — business logic and process orchestration
+- `models.py` — ORM models (within each app)
+- `managers.py` — custom QuerySets and model managers
+- `tasks/` — asynchronous tasks (Celery)
+- `migrations/` — database migrations (per app)
+- `admin.py` — Django admin panel
 
-Общие и переиспользуемые компоненты:
+Common and reusable components:
 
-- `common/` — общие утилиты, исключения, базовые классы
-- `config/` — конфигурация проекта (settings, environment-specific настройки)
-- `storage/` — интеграция с Object Storage
-- `queue/` — интеграция с очередями задач
+- `common/` — common utilities, exceptions, base classes
+- `config/` — project configuration (settings, environment-specific settings)
+- `storage/` — Object Storage integration
+- `queue/` — task queue integration
 
-Точка входа:
+Entry point:
 
-- `manage.py` — CLI для управления проектом
-- ASGI/WGI конфигурация — запуск приложения
+- `manage.py` — CLI for project management
+- ASGI/WGI configuration — application startup
 
-Дополнительно:
+Additionally:
 
-- `tests/` — тесты (unit и integration)
-- `.env` / settings modules — конфигурация окружений (dev/prod)
+- `tests/` — tests (unit and integration)
+- `.env` / settings modules — environment configuration (dev/prod)
 
-Такой подход сочетает:
+This approach combines:
 
-- **Django-конвенции (apps, models, admin)**
-- **явное разделение бизнес-логики (services)**
-- **модульность по доменам**
+- **Django conventions (apps, models, admin)**
+- **explicit business logic separation (services)**
+- **domain-based modularity**
 
-и обеспечивает хорошую читаемость, масштабируемость и удобство поддержки системы.
+and ensures good readability, scalability, and system maintainability.
 
 ## **5. API Design Principles**
 
-API проектируется с учетом расширяемости и консистентности.
+The API is designed with extensibility and consistency in mind.
 
-Основные принципы:
+Main principles:
 
-- версионирование (`/api/v1/...`)
-- использование DRF serializers
-- поддержка пагинации
-- единый формат ошибок
-- наличие health-check endpoint
-- rate limiting (через DRF или middleware)
+- versioning (`/api/v1/...`)
+- use of DRF serializers
+- pagination support
+- unified error format
+- health-check endpoint presence
+- rate limiting (through DRF or middleware)
 
-Обработка ошибок централизуется через Django exception handling и DRF.
+Error handling is centralized through Django exception handling and DRF.
 
 ## **6. Core Flows**
 
 ### **6.1 Application Submission Flow**
 
-Процесс подачи заявки разделен на несколько этапов.
+The application submission process is divided into several stages.
 
-Сначала пользователь создает заявку в статусе `DRAFT`. Далее он загружает документ, который сохраняется в Object Storage, а его метаданные фиксируются в базе данных. После этого пользователь заполняет форму, данные которой сохраняются в JSON-поле модели.
+First, the user creates an application in `DRAFT` status. Then they upload a document, which is saved in Object Storage, and its metadata is recorded in the database. After that, the user fills out a form, the data of which is saved in the model's JSON field.
 
-Финальным шагом является отправка заявки (`submit`). На этом этапе сервисный слой:
+The final step is submitting the application (`submit`). At this stage, the service layer:
 
-- проверяет корректность данных
-- переводит заявку в статус `SUBMITTED`
-- инициирует асинхронную задачу
+- validates data correctness
+- transitions the application to `SUBMITTED` status
+- initiates an asynchronous task
 
-После этого задача отправляется в очередь (Celery), а клиент получает `202 Accepted`.
+After that, the task is sent to the queue (Celery), and the client receives `202 Accepted`.
 
-При начале обработки статус заявки обновляется на `PROCESSING`.
+When processing begins, the application status is updated to `PROCESSING`.
 
 ### **6.2 AI Callback Flow**
 
-После завершения обработки AI-агент отправляет результат через callback API.
+After processing is complete, the AI agent sends the result via callback API.
 
-Backend:
+The backend:
 
-- принимает POST-запрос (DRF view)
-- выполняет аутентификацию (например, API key)
-- валидирует данные (serializer или Pydantic)
+- accepts a POST request (DRF view)
+- performs authentication (e.g., API key)
+- validates data (serializer or Pydantic)
 
-Далее сервисный слой:
+Then the service layer:
 
-- проверяет существование заявки
-- сохраняет отчет (в рамках `transaction.atomic`)
-- обновляет статус:
+- checks application existence
+- saves the report (within `transaction.atomic`)
+- updates the status:
     - `ACCEPTED`
     - `REJECTED`
-- фиксирует время обработки
+- records processing time
 
-После успешной обработки возвращается `200 OK`.
+After successful processing, `200 OK` is returned.
 
 ### **6.3 Real-Time Notifications (SSE)**
 
-Для уведомления пользователей используется механизм Server-Sent Events (SSE).
+Server-Sent Events (SSE) mechanism is used for user notifications.
 
-Django может использовать:
+Django can use:
 
 - streaming responses
-- или отдельный ASGI-слой (например, Django Channels)
+- or a separate ASGI layer (e.g., Django Channels)
 
-Backend:
+The backend:
 
-- поддерживает соединение
-- отправляет события при изменении статуса заявки
+- maintains the connection
+- sends events when application status changes
 
-Это позволяет обновлять интерфейс без polling.
+This allows updating the interface without polling.
 
 ## **7. Task Queue Integration**
 
-Backend использует Celery для передачи задач AI-агенту.
+The backend uses Celery for transferring tasks to the AI agent.
 
-Задача содержит:
+The task contains:
 
-- идентификатор заявки
-- метаданные
+- application identifier
+- metadata
 - `doc_url`
 
-Celery обеспечивает:
+Celery provides:
 
-- асинхронность
-- retry-механизм
-- устойчивость к сбоям
+- asynchronicity
+- retry mechanism
+- fault tolerance
 
-При исчерпании попыток:
+When attempts are exhausted:
 
-- заявка переводится в `FAILED`
-- затем мапится в пользовательский статус
+- the application transitions to `FAILED`
+- then is mapped to user status
 
 ## **8. Database Integration**
 
-Работа с базой данных реализована через Django ORM.
+Database operations are implemented through Django ORM.
 
-Ключевые аспекты:
+Key aspects:
 
-- использование connection pooling (на уровне PostgreSQL)
-- транзакции через `transaction.atomic`
-- использование select_related / prefetch_related для оптимизации
+- use of connection pooling (at PostgreSQL level)
+- transactions through `transaction.atomic`
+- use of select_related / prefetch_related for optimization
 
-Транзакции применяются в операциях, где важна консистентность:
+Transactions are applied in operations where consistency is important:
 
-- создание заявки и документа
-- сохранение отчета и обновление статуса
+- creating application and document
+- saving report and updating status
 
 ## **9. File Storage**
 
-Файлы пользователей хранятся в Object Storage.
+User files are stored in Object Storage.
 
-- **MinIO** — для локальной разработки
-- **S3** — для production
+- **MinIO** — for local development
+- **S3** — for production
 
-Интеграция осуществляется через Django storage backend.
+Integration is performed through Django storage backend.
 
-Backend:
+The backend:
 
-- валидирует файлы
-- управляет доступом
-- хранит только ссылки (URL)
+- validates files
+- manages access
+- stores only links (URLs)
 
 ## **10. Security**
 
-Безопасность реализуется на нескольких уровнях.
+Security is implemented at multiple levels.
 
-- JWT (через DRF или сторонние библиотеки)
-- hashing паролей (встроенный Django механизм)
-- валидация файлов
-- защита callback API через API key
+- JWT (through DRF or third-party libraries)
+- password hashing (built-in Django mechanism)
+- file validation
+- callback API protection through API key
 
-Секреты:
+Secrets:
 
 - `.env` (dev)
 - secrets manager (prod)
 
 ## **11. Error Handling and Observability**
 
-Система использует централизованную обработку ошибок.
+The system uses centralized error handling.
 
 - DRF exception handler
-- кастомные исключения
-- единый формат ответа
+- custom exceptions
+- unified response format
 
-Логирование:
+Logging:
 
 - Django logging config
-- запросы
-- ошибки
-- бизнес-события
+- requests
+- errors
+- business events
 
-Возможна интеграция с системами мониторинга и алертинга.
+Integration with monitoring and alerting systems is possible.
 
 ## **12. Summary**
 
-Backend API спроектирован как Django-based оркестратор, который управляет состоянием системы и делегирует обработку AI-агенту.
+The Backend API is designed as a Django-based orchestrator that manages system state and delegates processing to the AI agent.
 
-Асинхронная модель с использованием Celery и callback позволяет эффективно обрабатывать долгие операции и масштабировать систему.
+The asynchronous model using Celery and callback allows efficient processing of long operations and system scaling.
 
-Использование Django apps, ORM и встроенных механизмов фреймворка упрощает разработку, повышает надежность и делает систему удобной для дальнейшего развития.
+The use of Django apps, ORM, and built-in framework mechanisms simplifies development, increases reliability, and makes the system convenient for further development.

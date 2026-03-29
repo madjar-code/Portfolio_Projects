@@ -1,25 +1,25 @@
 ## **1. Overview**
 
-AI-агент в системе выступает как **изолированный исполнитель задач (worker)**, который обрабатывает заявки на основе внешне заданных процедур.
+The AI agent in the system acts as an **isolated task executor (worker)** that processes applications based on externally defined procedures.
 
-Важное свойство архитектуры — агент **не владеет состоянием системы** и не участвует в управлении жизненным циклом заявки. Он не хранит историю, не синхронизируется с базой backend и не делает предположений о глобальном состоянии системы.
+An important property of the architecture is that the agent **does not own the system state** and does not participate in managing the application lifecycle. It does not store history, does not synchronize with the backend database, and does not make assumptions about the global system state.
 
-Вместо этого агент получает **самодостаточную задачу**, интерпретирует её в контексте процедуры и возвращает результат в виде структурированного отчета.
+Instead, the agent receives a **self-sufficient task**, interprets it in the context of the procedure, and returns the result as a structured report.
 
-Таким образом, агент можно рассматривать как:
+Thus, the agent can be viewed as:
 
-> **интерпретатор процедур + исполнитель инструментов + генератор отчета**
+> **procedure interpreter + tool executor + report generator**
 > 
 
 ## **2. Data & Control Flow**
 
-Ключевое уточнение:
+Key clarification:
 
-- **метаданные заявки передаются прямо в задаче**
-- **документ загружается по URL из Object Storage**
-- **процедура извлекается из SQLite агента**
+- **application metadata is passed directly in the task**
+- **the document is loaded by URL from Object Storage**
+- **the procedure is extracted from the agent's SQLite**
 
-Это устраняет зависимость агента от backend-хранилищ.
+This eliminates the agent's dependency on backend storage.
 
 ```mermaid
 sequenceDiagram
@@ -42,7 +42,7 @@ sequenceDiagram
 
 ## **3. Execution Model**
 
-Обработка задачи строится как **одноразовый execution pipeline**, который не опирается на внешнее состояние.
+Task processing is built as a **one-time execution pipeline** that does not rely on external state.
 
 ```mermaid
 flowchart TD
@@ -61,65 +61,65 @@ flowchart TD
     LLM --> R[Structured Report]
 ```
 
-Ключевая идея здесь — **runtime-композиция контекста**:
+The key idea here is **runtime context composition**:
 
-- metadata уже в памяти
-- документ подтягивается по ссылке
-- процедура загружается локально
+- metadata is already in memory
+- the document is pulled by reference
+- the procedure is loaded locally
 
-Агент не делает дополнительных запросов к backend.
+The agent does not make additional requests to the backend.
 
 ## **4. Procedure as Runtime Logic**
 
-Процедура — это не просто конфигурация, а **главный носитель бизнес-логики системы**.
+The procedure is not just configuration, but the **main carrier of system business logic**.
 
-Она хранится в двух частях:
+It is stored in two parts:
 
-- SQLite → метаданные процедуры
-- файл (media storage) → текст инструкции
+- SQLite → procedure metadata
+- file (media storage) → instruction text
 
-При выполнении задачи процедура интерпретируется LLM как **план действий**.
+When executing a task, the procedure is interpreted by the LLM as an **action plan**.
 
-### **4.1 Структурная роль процедуры**
+### **4.1 Structural Role of the Procedure**
 
-Процедура задаёт:
+The procedure defines:
 
-- какие данные важны
-- какие проверки нужно выполнить
-- какие инструменты использовать
-- какие критерии корректности применить
-- какой результат сформировать
+- which data is important
+- which checks need to be performed
+- which tools to use
+- which correctness criteria to apply
+- which result to form
 
-При этом:
+At the same time:
 
-> процедура не фиксирует алгоритм, а задаёт **намерение и рамки обработки**
+> the procedure does not fix an algorithm, but defines **intent and processing boundaries**
 > 
 
-### **4.2 Как агент «видит» процедуру**
+### **4.2 How the Agent "Sees" the Procedure**
 
-Во время выполнения всё сводится к единому промпту:
+During execution, everything comes down to a single prompt:
 
 ```
-Ты — AI-агент, обрабатывающий бюрократические заявки.
+You are an AI agent processing bureaucratic applications.
 
-Вот данные заявки:
+Here is the application data:
 {metadata + document}
 
-Вот процедура:
+Here is the procedure:
 {instruction file}
 
-Выполни проверку и верни результат в заданном формате.
+Perform the check and return the result in the specified format.
 ```
 
-Дальше LLM:
+Then the LLM:
 
-- интерпретирует шаги
-- решает, какие инструменты вызвать
-- определяет порядок действий
+- interprets the steps
+- decides which tools to call
+- determines the order of actions
 
 ## **5. Agent Reasoning Loop**
 
-Внутри агент работает не линейно, а через **итеративный цикл “мысль → действие → наблюдение”**.
+Inside, the agent works not linearly, but through an **iterative "thought → action → observation" cycle**.
 
 ```mermaid
 flowchart LR
@@ -129,40 +129,40 @@ flowchart LR
     Observation --> Thought
 ```
 
-Пример:
+Example:
 
-- «Нужно извлечь ФИО» → OCR
-- «Нужно сравнить» → сравнение
-- «Недостаточно данных» → попытка найти в другом месте
+- "Need to extract name" → OCR
+- "Need to compare" → comparison
+- "Not enough data" → attempt to find elsewhere
 
-Этот цикл продолжается до формирования финального результата.
+This cycle continues until the final result is formed.
 
 ## **6. Internal Architecture**
 
-Агент организован как набор слоев, каждый из которых отвечает за свою часть пайплайна.
+The agent is organized as a set of layers, each responsible for its part of the pipeline.
 ![AI Agent Layer Diagram](../../Pictures/AI_Agent_Layer_Diagram.webp)
 
 ## **7. Tools & Capabilities**
 
-Агент не «знает» как обрабатывать документы напрямую — он делает это через инструменты.
+The agent does not "know" how to process documents directly — it does this through tools.
 
-### **Инструменты**
+### **Tools**
 
-- OCR (извлечение текста)
-- чтение сегментов документа
-- поиск по паттернам
-- вызовы внешнего mock API
+- OCR (text extraction)
+- reading document segments
+- pattern search
+- external mock API calls
 
-### **LLM-уровень**
+### **LLM Level**
 
-- извлечение данных
-- сравнение
-- валидация
-- принятие решений
+- data extraction
+- comparison
+- validation
+- decision making
 
-Разделение важно:
+The separation is important:
 
-> инструменты = действия
+> tools = actions
 > 
 > 
 > LLM = reasoning + orchestration
@@ -177,73 +177,73 @@ flowchart LR
 	Agent --> |procedure_id| SQLite
 ```
 
-Агент:
+The agent:
 
-- не обращается к PostgreSQL
-- не хранит данные после выполнения
-- работает с **локальным snapshot контекста**
+- does not access PostgreSQL
+- does not store data after execution
+- works with a **local context snapshot**
 
-Это делает систему:
+This makes the system:
 
-- проще
-- безопаснее
-- масштабируемее
+- simpler
+- more secure
+- more scalable
 
 ## **9. Reliability & Error Handling**
 
-Обработка строится с учетом того, что ошибки — нормальная часть процесса.
+Processing is built with the understanding that errors are a normal part of the process.
 
-### Уровни retry:
+### Retry Levels:
 
-- очередь (task retry)
-- LLM вызовы
-- инструменты
+- queue (task retry)
+- LLM calls
+- tools
 - callback
 
-### Типы ошибок:
+### Error Types:
 
-- инфраструктурные
-- инструментальные
-- логические (данные)
-- неопределенность
+- infrastructure
+- tool-related
+- logical (data)
+- uncertainty
 
-Ключевой принцип:
+Key principle:
 
-> система допускает **неидеальные данные и частичные результаты**
+> the system allows **imperfect data and partial results**
 > 
 
 ## **10. Observability**
 
-Агент полностью трассируем:
+The agent is fully traceable:
 
-- логируются все шаги reasoning
-- фиксируются tool calls
-- сохраняются промежуточные состояния
-- возможна оценка через LLM-as-Judge
+- all reasoning steps are logged
+- tool calls are recorded
+- intermediate states are saved
+- evaluation through LLM-as-Judge is possible
 
-Это критично, потому что:
+This is critical because:
 
-> поведение агента определяется данными, а не кодом
+> the agent's behavior is determined by data, not code
 > 
 
 ## **11. Design Principles**
 
-- **Stateless processing** — отсутствие состояния
-- **Declarative logic** — логика в процедурах
-- **Loose coupling** — независимость от backend
-- **Tool-driven architecture** — действия через инструменты
-- **LLM as orchestrator** — управление выполнением
-- **Runtime composition** — вся логика собирается на лету
+- **Stateless processing** — absence of state
+- **Declarative logic** — logic in procedures
+- **Loose coupling** — independence from backend
+- **Tool-driven architecture** — actions through tools
+- **LLM as orchestrator** — execution management
+- **Runtime composition** — all logic is assembled on the fly
 
 ## **12. Key Architectural Insight**
 
-Главное, что ты здесь построил:
+The main thing you have built here:
 
-> **не просто AI-сервис, а интерпретируемую систему процедур**
+> **not just an AI service, but an interpretable procedure system**
 > 
 
-Где:
+Where:
 
-- backend управляет состоянием
-- агент выполняет интерпретацию
-- процедуры определяют поведение
+- the backend manages state
+- the agent performs interpretation
+- procedures define behavior
