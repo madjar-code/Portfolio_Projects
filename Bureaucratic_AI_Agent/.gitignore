@@ -73,3 +73,6 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
+
+# Internal document to plan the architecture
+Architecture_Plan.md
