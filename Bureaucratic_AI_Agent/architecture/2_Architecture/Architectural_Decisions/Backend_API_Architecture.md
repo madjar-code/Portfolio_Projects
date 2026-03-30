@@ -19,7 +19,7 @@ Main components:
 - **Django Migrations** — database schema management
 - **Pydantic (optional)** — external data validation (e.g., callback)
 - **Object Storage (S3 / MinIO)** — file storage
-- **Task Queue (Celery + Redis/RabbitMQ)** — asynchronous tasks
+- **Task Queue (Celery + RabbitMQ)** — asynchronous tasks
 
 This stack allows building scalable APIs with minimal infrastructure code and high development speed.
 

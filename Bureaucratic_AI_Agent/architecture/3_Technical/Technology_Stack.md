@@ -26,8 +26,8 @@ The project uses a modern technology stack for three main components: Frontend (
 | **Django** | Main web framework |
 | **Django REST Framework** | REST API |
 | **PostgreSQL** | Main database |
-| **Celery** | Asynchronous tasks |
-| **Redis / RabbitMQ** | Message broker for Celery |
+| **Celery** | Asynchronous task manager |
+| **RabbitMQ** | Message broker for Celery |
 | **S3 / MinIO** | Object Storage for documents |
 | **JWT (simplejwt)** | Authentication |
 | **Pydantic** | Validation of callback from AI agent |
