@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -20,8 +21,13 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "storages",
+    "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "drf_yasg",
+    "django_filters",
 
     "apps.auth",
+    "apps.applications",
 ]
 
 MIDDLEWARE = [
@@ -71,6 +77,28 @@ USE_TZ = True
 
 AUTH_USER_MODEL = "auth_app.User"
 
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+    ],
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-east-1")
@@ -80,3 +108,35 @@ AWS_DEFAULT_ACL = None
 
 AWS_S3_BUCKET_MEDIA = os.environ.get("AWS_S3_BUCKET_MEDIA", "media")
 AWS_S3_BUCKET_STATIC = os.environ.get("AWS_S3_BUCKET_STATIC", "static")
+
+API_TITLE = "Bureaucratic AI Agent API"
+API_VERSION = "v1"
+API_DESCRIPTION = "Backend API for the Bureaucratic AI Agent platform."
+API_TERMS_OF_SERVICE = "https://www.google.com/policies/terms/"
+API_CONTACT_EMAIL = os.environ.get("API_CONTACT_EMAIL", "admin@example.com")
+API_LICENSE_NAME = "MIT License"
+
+# Swagger settings for development
+SWAGGER_SETTINGS = {
+    "SECURITY_DEFINITIONS": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        }
+    },
+    "USE_SESSION_AUTH": False,
+    "JSON_EDITOR": True,
+    "SUPPORTED_SUBMIT_METHODS": ["get", "post", "put", "delete", "patch"],
+    "DEFAULT_MODEL_RENDERING": "example",
+    "DEFAULT_MODEL_DEPTH": 3,
+}
+
+# ReDoc settings
+REDOC_SETTINGS = {
+    "LAZY_RENDERING": True,
+    "HIDE_HOSTNAME": False,
+    "EXPAND_RESPONSES": ["200", "201"],
+    "PATH_IN_MIDDLE": True,
+}

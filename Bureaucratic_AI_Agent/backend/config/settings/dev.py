@@ -28,10 +28,10 @@ STORAGES = {
         "OPTIONS": {**_S3_OPTIONS_BASE, "bucket_name": AWS_S3_BUCKET_MEDIA},   # noqa: F405
     },
     "staticfiles": {
-        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        "OPTIONS": {**_S3_OPTIONS_BASE, "bucket_name": AWS_S3_BUCKET_STATIC},  # noqa: F405
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
 MEDIA_URL = f"{_MINIO_ENDPOINT}/{AWS_S3_BUCKET_MEDIA}/"   # noqa: F405
-STATIC_URL = f"{_MINIO_ENDPOINT}/{AWS_S3_BUCKET_STATIC}/"  # noqa: F405
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
