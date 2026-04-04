@@ -6,8 +6,12 @@ requires-python = ">=3.12"
 dependencies = [
     "boto3>=1.42.80",
     "django>=6.0.3",
+    "django-filter>=25.2",
     "django-jazzmin>=3.0.4",
     "django-storages>=1.14.6",
+    "djangorestframework>=3.17.1",
+    "djangorestframework-simplejwt>=5.5.1",
+    "drf-yasg>=1.21.15",
     "pillow>=12.1.1",
     "psycopg[binary]>=3.3.3",
     "python-dotenv>=1.2.2",
