@@ -76,3 +76,7 @@ coverage
 
 # Internal document to plan the architecture
 Architecture_Plan.md
+
+# Claude AI
+.claude/
+docs/
