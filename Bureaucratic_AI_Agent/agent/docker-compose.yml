@@ -1,0 +1,14 @@
+services:
+  agent:
+    build: .
+    container_name: bureaucratic_agent
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+
+networks:
+  default:
+    external: true
+    name: bureaucratic_network
