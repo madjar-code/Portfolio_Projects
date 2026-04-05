@@ -2,7 +2,8 @@
         up down restart logs \
         migrate migrations createsuperuser collectstatic create-buckets \
         minio-alias minio-ls minio-clear-media minio-clear-static \
-        minio-policy-media minio-policy-static
+        minio-policy-media minio-policy-static \
+        minio-public-media minio-public-static
 
 MINIO_ALIAS     = local
 MINIO_ENDPOINT  = http://localhost:9000
@@ -89,3 +90,11 @@ minio-policy-media: minio-alias
 
 minio-policy-static: minio-alias
 	$(MC) anonymous get $(MINIO_ALIAS)/$(BUCKET_STATIC)
+
+minio-public-media: minio-alias
+	$(MC) mb --ignore-existing $(MINIO_ALIAS)/$(BUCKET_MEDIA)
+	$(MC) anonymous set public $(MINIO_ALIAS)/$(BUCKET_MEDIA)
+
+minio-public-static: minio-alias
+	$(MC) mb --ignore-existing $(MINIO_ALIAS)/$(BUCKET_STATIC)
+	$(MC) anonymous set public $(MINIO_ALIAS)/$(BUCKET_STATIC)
