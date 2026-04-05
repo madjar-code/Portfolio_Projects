@@ -140,3 +140,12 @@ REDOC_SETTINGS = {
     "EXPAND_RESPONSES": ["200", "201"],
     "PATH_IN_MIDDLE": True,
 }
+
+# Celery + RabbitMQ setup
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "amqp://guest:guest@localhost:5672//")
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TIMEZONE = TIME_ZONE
+
+AGENT_API_KEY = os.environ.get("AGENT_API_KEY", "")
