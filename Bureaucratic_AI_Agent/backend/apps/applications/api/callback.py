@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -7,6 +6,9 @@ from rest_framework import serializers, status
 
 from apps.applications.models import Application, AIReport
 from apps.applications.constants import ApplicationStatus
+
+from config.redis_client import publish_sse_event
+from config.hmac_auth import verify_hmac_signature
 
 
 class AIReportCallbackSerializer(serializers.Serializer):
@@ -23,15 +25,18 @@ class AIReportCallbackSerializer(serializers.Serializer):
 class CallbackView(APIView):
     """
     Receives AI agent processing result.
-    Authenticated by X-API-Key header (not JWT — agent has no user account).
+    Authenticated by HMAC-SHA256 signature (not JWT — agent has no user account).
+    Headers: X-Timestamp (unix seconds), X-Signature (hex HMAC-SHA256).
     """
     permission_classes = (AllowAny,)
 
     def post(self, request):
-        api_key = request.headers.get("X-API-Key", "")
-        if not settings.AGENT_API_KEY or api_key != settings.AGENT_API_KEY:
+        body = request.body
+        timestamp = request.headers.get("X-Timestamp", "")
+        signature = request.headers.get("X-Signature", "")
+        if not verify_hmac_signature(body, timestamp, signature):
             return Response(
-                {"error": {"message": "Invalid or missing API key."}},
+                {"error": {"message": "Invalid or missing signature."}},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
 
@@ -45,7 +50,7 @@ class CallbackView(APIView):
         data = serializer.validated_data
 
         try:
-            application = Application.objects.get(id=data["application_id"])
+            application = Application.objects.select_related("user").get(id=data["application_id"])
         except Application.DoesNotExist:
             return Response(
                 {"error": {"message": "Application not found."}},
@@ -72,5 +77,11 @@ class CallbackView(APIView):
             )
             application.status = new_status
             application.save(update_fields=["status", "updated_at"])
+            publish_sse_event(
+                user_id=str(application.user_id),
+                application_id=str(application.id),
+                status=new_status,
+                application_number=application.application_number,
+            )
 
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
