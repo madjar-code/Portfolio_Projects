@@ -7,6 +7,7 @@ dependencies = [
     "boto3>=1.42.80",
     "celery>=5.4.0",
     "django>=6.0.3",
+    "redis>=5.0.0",
     "django-filter>=25.2",
     "django-jazzmin>=3.0.4",
     "django-storages>=1.14.6",
@@ -16,4 +17,5 @@ dependencies = [
     "pillow>=12.1.1",
     "psycopg[binary]>=3.3.3",
     "python-dotenv>=1.2.2",
+    "uvicorn>=0.44.0",
 ]
