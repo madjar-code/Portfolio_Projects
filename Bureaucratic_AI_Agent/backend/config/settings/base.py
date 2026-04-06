@@ -149,3 +149,5 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
 
 AGENT_API_KEY = os.environ.get("AGENT_API_KEY", "")
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
