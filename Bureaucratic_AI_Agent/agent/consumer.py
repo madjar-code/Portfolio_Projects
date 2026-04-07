@@ -7,7 +7,7 @@ from aio_pika.abc import AbstractIncomingMessage
 
 from callback import send_callback
 from config import settings
-from handler import handle_task
+from core.handler import handle_task
 from models import TaskMessage
 
 logger = logging.getLogger(__name__)
