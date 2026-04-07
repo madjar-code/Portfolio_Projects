@@ -25,4 +25,5 @@ class AIReportPayload(BaseModel):
     recommendations: str
     processing_time_seconds: int
     ai_model_used: str
+    prompt_version: str = "unknown"
 
