@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     backend_callback_url: str
     agent_api_key: str
 
+    openai_api_key: str
+    production: bool = False
+
     model_config = SettingsConfigDict(env_file=".env")
 
 
