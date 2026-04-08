@@ -4,21 +4,21 @@ from pydantic import BaseModel
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
-    ToolMessage,
 )
 from langchain_core.tools import StructuredTool
 
 from config import settings
+from core.agent_executor import AgentExecutor
 from core.knowledge_base import knowledge_base, KnowledgeBaseError
 from core.llm_registry import LLMRegistry
-from core.tools.stubs import build_default_registry
+from core.tools.factory import build_registry_for_task
 from core.prompt_builder import prompt_builder
 from core.prompt_version_registry import PromptVersionNotFoundError
 from models import TaskMessage, AIReportPayload
 
 logger = logging.getLogger(__name__)
 
-MAX_ITERATIONS = 10
+MAX_ITERATIONS = 20
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +34,7 @@ class _SubmitReportArgs(BaseModel):
 
 
 def _make_submit_report_tool() -> StructuredTool:
-    async def _noop(**kwargs) -> str:
+    async def _noop(**_: object) -> str:
         return "submitted"
 
     return StructuredTool.from_function(
@@ -142,46 +142,17 @@ async def handle_task(task: TaskMessage, prompt_version: str | None = None) -> A
     messages = _to_lc_messages(raw_messages)
 
     # 3. Build tool-bound model
-    tool_registry = build_default_registry()
+    tool_registry = build_registry_for_task(task)
     submit_tool = _make_submit_report_tool()
     all_tools = tool_registry.as_langchain_tools() + [submit_tool]
     model = LLMRegistry.get(model_name).bind_tools(all_tools)
 
-    # 4. ReAct loop
+    # 4. Run agent
+    executor = AgentExecutor(model, tool_registry, max_iterations=MAX_ITERATIONS)
     try:
-        for iteration in range(MAX_ITERATIONS):
-            logger.debug("Iteration %d/%d", iteration, MAX_ITERATIONS)
-
-            response = await model.ainvoke(messages)
-            messages.append(response)
-
-            submit_args = None
-            tool_messages = []
-
-            for tc in (response.tool_calls or []):
-                if tc["name"] == "submit_report":
-                    submit_args = tc["args"]
-                else:
-                    result = await tool_registry.execute(tc["name"], tc["args"])
-                    logger.debug("Tool %s → %.80s", tc["name"], result)
-                    tool_messages.append(
-                        ToolMessage(content=result, tool_call_id=tc["id"])
-                    )
-
-            messages.extend(tool_messages)
-
-            if submit_args is not None:
-                elapsed = int(time.monotonic() - start)
-                logger.info(
-                    "Task complete: application=%s decision=%s time=%ds",
-                    task.application_id,
-                    submit_args.get("decision"),
-                    elapsed,
-                )
-                return _build_report(task, submit_args, model_name, version, elapsed)
-
+        submit_args = await executor.run(messages)
     except Exception as exc:
-        logger.exception("LLM error during loop: %s", exc)
+        logger.exception("Agent error: %s", exc)
         return _error_report(
             task,
             "llm_error",
@@ -191,17 +162,26 @@ async def handle_task(task: TaskMessage, prompt_version: str | None = None) -> A
             int(time.monotonic() - start),
         )
 
-    # Max iterations exceeded
-    logger.warning(
-        "Max iterations (%d) reached without submit_report: application=%s",
-        MAX_ITERATIONS,
+    elapsed = int(time.monotonic() - start)
+
+    if submit_args is None:
+        logger.warning(
+            "Max iterations reached without submit_report: application=%s",
+            task.application_id,
+        )
+        return _error_report(
+            task,
+            "max_iterations_reached",
+            "Agent reached the iteration limit without submitting a report. Please retry.",
+            version,
+            model_name,
+            elapsed,
+        )
+
+    logger.info(
+        "Task complete: application=%s decision=%s time=%ds",
         task.application_id,
+        submit_args.get("decision"),
+        elapsed,
     )
-    return _error_report(
-        task,
-        "max_iterations_reached",
-        "Agent reached the iteration limit without submitting a report. Please retry.",
-        version,
-        model_name,
-        int(time.monotonic() - start),
-    )
+    return _build_report(task, submit_args, model_name, version, elapsed)
