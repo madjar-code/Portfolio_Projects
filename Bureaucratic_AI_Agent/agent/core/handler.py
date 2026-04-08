@@ -1,6 +1,7 @@
 import time
 import logging
-from pydantic import BaseModel
+from typing import Any
+from pydantic import BaseModel, Field
 from langchain_core.messages import (
     SystemMessage,
     HumanMessage,
@@ -25,12 +26,25 @@ MAX_ITERATIONS = 20
 # submit_report tool
 # ---------------------------------------------------------------------------
 
+class _IssueArg(BaseModel):
+    field: str = Field(description="The field or area where the issue was found")
+    detail: str = Field(description="Human-readable description of the problem")
+    severity: str = Field(description='"critical", "warning", or "info"')
+
+
 class _SubmitReportArgs(BaseModel):
-    decision: str
-    validation_result: dict
-    extracted_data: dict
-    issues_found: list[dict]
-    recommendations: str
+    decision: str = Field(description='"ACCEPT" or "REJECT"')
+    confidence_score: float = Field(description="Your confidence in the decision, from 0.0 (uncertain) to 1.0 (certain)")
+    extracted_data: dict[str, Any] = Field(
+        description="Key-value pairs extracted from the document or form, e.g. {'first_name': 'Ion', 'idno': '1234567890123'}"
+    )
+    issues_found: list[_IssueArg] = Field(
+        description="Validation failures found. Empty list if decision is ACCEPT."
+    )
+    recommendations: str | None = Field(
+        default=None,
+        description="Optional suggestion for the applicant on how to correct the application."
+    )
 
 
 def _make_submit_report_tool() -> StructuredTool:
@@ -64,17 +78,19 @@ def _build_report(
     version: str,
     elapsed: int,
 ) -> AIReportPayload:
+    from models import ValidationIssue
     return AIReportPayload(
         application_id=task.application_id,
         decision=args.get("decision", "REJECT"),
-        validation_result=args.get("validation_result", {}),
+        confidence_score=args.get("confidence_score", 0.5),
         extracted_data=args.get("extracted_data", {}),
-        issues_found=args.get("issues_found", []),
-        recommendations=args.get("recommendations", "No recommendations provided."),
+        issues_found=[ValidationIssue(**i) if isinstance(i, dict) else i for i in args.get("issues_found", [])],
+        recommendations=args.get("recommendations") or None,
         processing_time_seconds=elapsed,
         ai_model_used=model_name,
         prompt_version=version,
     )
+
 
 def _error_report(
     task: TaskMessage,
@@ -84,13 +100,14 @@ def _error_report(
     model_name: str,
     elapsed: int,
 ) -> AIReportPayload:
+    from models import ValidationIssue
     return AIReportPayload(
         application_id=task.application_id,
-        decision="REJECT",
-        validation_result={"error": error_type},
+        decision="ERROR",
+        confidence_score=0.0,
         extracted_data={},
-        issues_found=[{"type": error_type, "detail": detail, "severity": "critical"}],
-        recommendations=detail,
+        issues_found=[ValidationIssue(field=error_type, detail=detail, severity="critical")],
+        recommendations=None,
         processing_time_seconds=elapsed,
         ai_model_used=model_name,
         prompt_version=version,

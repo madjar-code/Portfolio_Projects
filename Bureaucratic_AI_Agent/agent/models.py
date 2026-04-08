@@ -16,14 +16,19 @@ class TaskMessage(BaseModel):
     document: DocumentMetadata | None = None
 
 
+class ValidationIssue(BaseModel):
+    field: str
+    detail: str
+    severity: str  # "critical" | "warning" | "info"
+
+
 class AIReportPayload(BaseModel):
     application_id: str
-    decision: str                        # "ACCEPT" or "REJECT"
-    validation_result: dict[str, Any]
-    extracted_data: dict[str, Any]
-    issues_found: list[dict[str, Any]]
-    recommendations: str
+    decision: str                        # "ACCEPT" | "REJECT" | "ERROR"
+    confidence_score: float              # 0.0 – 1.0
+    extracted_data: dict[str, Any]       # key-value pairs from document/form
+    issues_found: list[ValidationIssue]
+    recommendations: str | None = None
     processing_time_seconds: int
     ai_model_used: str
     prompt_version: str = "unknown"
-

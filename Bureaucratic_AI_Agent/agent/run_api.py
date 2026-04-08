@@ -55,7 +55,7 @@ async def run(
     task = TaskMessage(
         application_id=f"run-{uuid4().hex[:8]}",
         procedure=procedure,
-        form_data=json.loads(form_data),
+        form_data=json.loads(form_data or "{}"),
         document=doc_meta,
     )
 
