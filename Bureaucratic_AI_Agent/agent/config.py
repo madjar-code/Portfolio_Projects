@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     production: bool = False
     prompt_version: str = "v1"
+    default_model: str = "gpt-4o-mini"
 
     model_config = SettingsConfigDict(env_file=".env")
 
