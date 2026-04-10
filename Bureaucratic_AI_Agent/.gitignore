@@ -80,3 +80,12 @@ Architecture_Plan.md
 # Claude AI
 .claude/
 docs/
+
+# Scripts for testing
+test_callback.py
+
+# Results of evaluation
+agent/evals/results
+
+# Fixtures for evaluation
+agent/evals/fixtures/*.jpg
