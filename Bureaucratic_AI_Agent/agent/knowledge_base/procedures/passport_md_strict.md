@@ -10,26 +10,34 @@ The agent MUST follow the Agent Plan steps in the listed order.
 - File size: minimum 10 KB, maximum 10 MB
 - Image must be sufficiently clear and legible (not a screenshot, not a photocopy of a photocopy)
 
+## STEP 0 — Pre-flight gate (evaluate BEFORE calling any tool)
+
+**This step requires NO tools.** All information is already in your context.
+
+Check each condition in order. If any fails, submit your report immediately and stop
+without reading the document.
+
+| Condition | Fail if |
+|-----------|---------|
+| Document present | No document was submitted |
+| Format | Not JPG or PNG |
+| File size | Less than 10 KB (10,240 bytes) or more than 10 MB |
+
+If all pre-flight checks pass, proceed to the Agent Plan below.
+
 ## Agent Plan
 
-1. Verify document metadata before reading the file. Check that:
-   - The format is JPG or PNG (reject immediately if PDF or other).
-   - The file size is between 10 KB and 10 MB (reject if outside range).
-   If any metadata check fails, reject immediately without reading the file.
-
-2. Read the first page of the submitted document. Determine whether it is a valid
+1. Read the first page of the submitted document. Determine whether it is a valid
    identity document (passport or national ID). If it is clearly not an identity
    document, reject immediately with a clear explanation.
 
+2. Obtain today's date and verify that the document has not expired.
+
 3. Extract the applicant's personal data from the document: first name, last name,
-   date of birth, document number, and expiry date.
+   date of birth, document number, and expiry date. Compare first name and last name
+   against the applicant's form data and note any mismatches.
 
-4. Obtain today's date and verify that the document has not expired.
-
-5. Compare the extracted first name and last name against the applicant's form data.
-   Note any mismatches.
-
-6. Compile all findings and submit the final validation report.
+4. Compile all findings and submit the final validation report.
    Important: complete all steps above before calling submit_report, even if a reject reason was found earlier. The goal is to collect every issue in a single report.
 
 ## Validation Rules
