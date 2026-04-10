@@ -1,4 +1,5 @@
 import logging
+from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, ToolMessage
 
 from core.tools import ToolRegistry
@@ -12,6 +13,15 @@ _REFLECTION_PROMPT = (
     "If you have enough information to decide (including REJECT) — call submit_report now.\n"
     "If not, specify exactly what is still missing and call the appropriate tool."
 )
+
+
+@dataclass
+class TraceEvent:
+    iteration: int
+    step: str
+    tool_name: str | None = None
+    tool_args: dict | None = None
+    result: str | None = None
 
 
 class AgentExecutor:
@@ -37,11 +47,13 @@ class AgentExecutor:
         self._tool_registry = tool_registry
         self._max_iterations = max_iterations
 
-    async def run(self, messages: list) -> dict | None:
+    async def run(self, messages: list) -> tuple[dict | None, list[TraceEvent]]:
         """
         Runs the loop. Returns submit_report args dict on success,
         or None if max_iterations reached without submit_report.
         """
+        trace: list[TraceEvent] = []
+
         for iteration in range(self._max_iterations):
             logger.info("--- Iteration %d/%d ---", iteration + 1, self._max_iterations)
 
@@ -50,20 +62,34 @@ class AgentExecutor:
             messages.append(response)
 
             if response.content:
-                logger.info("Agent: %s", response.content[:300])
+                logger.info("Agent: %s", response.content)
 
             # submit_report in action step
             submit_args = self._find_submit(response)
             if submit_args is not None:
                 logger.info("Agent → submit_report(%s)", submit_args.get("decision"))
-                return submit_args
+                return submit_args, trace
 
             # Step 2: Observation — execute tool calls
             tool_messages = []
             for tc in (response.tool_calls or []):
                 logger.info("Agent → %s(%s)", tc["name"], tc["args"])
+                trace.append(TraceEvent(
+                    iteration=iteration,
+                    step="action",
+                    tool_name=tc["name"],
+                    tool_args=tc["args"],
+                ))
                 result = await self._tool_registry.execute(tc["name"], tc["args"])
                 logger.info("Result: %.200s", result)
+                trace.append(TraceEvent(
+                    iteration=iteration,
+                    step="observation",
+                    tool_name=tc["name"],
+                    tool_args=tc["args"],
+                    result=result,
+                ))
+
                 tool_messages.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
                 )
@@ -78,7 +104,12 @@ class AgentExecutor:
             messages.append(reflection)
 
             if reflection.content:
-                logger.info("Reflection: %s", reflection.content[:300])
+                logger.info("Reflection: %s", reflection.content)
+                trace.append(TraceEvent(
+                    iteration=iteration,
+                    step="reflection",
+                    result=reflection.content,
+                ))
 
             # submit_report in reflection step
             submit_args = self._find_submit(reflection)
@@ -87,7 +118,7 @@ class AgentExecutor:
                     "Agent → submit_report(%s) [via reflection]",
                     submit_args.get("decision"),
                 )
-                return submit_args
+                return submit_args, trace
 
             # If reflection called any regular tools, execute them.
             # Every AIMessage with tool_calls MUST be followed by ToolMessages —
@@ -105,7 +136,7 @@ class AgentExecutor:
             messages.extend(reflection_tool_messages)
 
         logger.warning("Max iterations (%d) reached without submit_report", self._max_iterations)
-        return None
+        return None, trace
 
     @staticmethod
     def _find_submit(response) -> dict | None:
