@@ -167,7 +167,7 @@ async def handle_task(task: TaskMessage, prompt_version: str | None = None) -> A
     # 4. Run agent
     executor = AgentExecutor(model, tool_registry, max_iterations=MAX_ITERATIONS)
     try:
-        submit_args = await executor.run(messages)
+        submit_args, _trace = await executor.run(messages)
     except Exception as exc:
         logger.exception("Agent error: %s", exc)
         return _error_report(
