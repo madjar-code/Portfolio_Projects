@@ -1,0 +1,122 @@
+[
+  {
+    "case_id": "business_reg_001",
+    "description": "All fields valid — should ACCEPT",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Ion", "last_name": "Popescu",
+      "idno": "2001013100042",
+      "business_name": "Tech Solutions SRL",
+      "business_activity": "Software development and IT consulting",
+      "address": "str. Stefan cel Mare 1, Chisinau",
+      "email": "ion.popescu@example.com",
+      "phone": "+373 69 123 456"
+    },
+    "document_url": null,
+    "expected_decision": "ACCEPT",
+    "expected_issues": [],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "business_reg_002",
+    "description": "Invalid email format",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Ion", "last_name": "Popescu",
+      "idno": "2001013100042",
+      "business_name": "Tech Solutions SRL",
+      "business_activity": "Software development",
+      "address": "str. Test 1",
+      "email": "not-an-email",
+      "phone": "+373 69 123 456"
+    },
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["email"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "business_reg_003",
+    "description": "Invalid IDNO (wrong length)",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Ion", "last_name": "Popescu",
+      "idno": "12345",
+      "business_name": "Tech Solutions SRL",
+      "business_activity": "Software development",
+      "address": "str. Test 1",
+      "email": "ion@example.com",
+      "phone": "+373 69 123 456"
+    },
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["idno"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "business_reg_004",
+    "description": "Meaningless business name",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Ion", "last_name": "Popescu",
+      "idno": "2001013100042",
+      "business_name": "!!!###",
+      "business_activity": "Software development",
+      "address": "str. Test 1",
+      "email": "ion@example.com",
+      "phone": "+373 69 123 456"
+    },
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["business_name"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "business_reg_005",
+    "description": "Single-character business activity",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Ion", "last_name": "Popescu",
+      "idno": "2001013100042",
+      "business_name": "Tech Solutions SRL",
+      "business_activity": "x",
+      "address": "str. Test 1",
+      "email": "ion@example.com",
+      "phone": "+373 69 123 456"
+    },
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["business_activity"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "business_reg_006",
+    "description": "Multiple issues — email, business name, activity all invalid",
+    "procedure": "business_reg",
+    "form_data": {
+      "first_name": "Test", "last_name": "User",
+      "idno": "2001013100042",
+      "business_name": "!!!###",
+      "business_activity": "x",
+      "address": "str. Test 1",
+      "email": "not-an-email",
+      "phone": "+373 69 000 000"
+    },
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["email", "business_name", "business_activity"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  }
+]
