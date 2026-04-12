@@ -21,28 +21,41 @@ _SYSTEM = (
 _RUBRIC = """
 ## Scoring rubric
 
-### issues_score
-For REJECT decisions:
-- 1.0: All real issues are found, attributed to the correct fields, severity is appropriate.
-- 0.5: Some issues found but incomplete or mislabeled.
-- 0.0: No issues found when there clearly are some, or completely wrong fields cited.
-For ACCEPT decisions:
-- 1.0: issues_found is empty, which is correct — no issues means no issues.
-- 0.0: issues_found is non-empty when the application is valid.
+The agent's decision is either ACCEPT or REJECT. Use only the section that matches.
 
-### recommendations_score
-For REJECT decisions:
-- 1.0: Actionable, specific, references the actual problems found.
-- 0.5: Vague but relevant.
-- 0.0: Missing, irrelevant, or contradicts the decision.
-For ACCEPT decisions:
-- 1.0: recommendations is null or absent — no correction needed for a valid application.
-- 0.0: recommendations contradict the ACCEPT decision.
+---
 
-### reasoning_score
-- 1.0: Reflection accurately summarises all validated fields; confidence is calibrated.
-- 0.5: Some reasoning present but with gaps or overconfidence.
-- 0.0: No meaningful reasoning, or reasoning contradicts the report.
+### If decision == ACCEPT
+
+**issues_score**
+- 1.0: issues_found is empty or absent. Correct — a valid application has no issues.
+- 0.0: issues_found contains items. The agent invented problems that do not exist.
+
+**recommendations_score**
+- 1.0: recommendations is null, absent, or a brief positive confirmation.
+- 0.5: recommendations exist but are neutral / do not contradict the decision.
+- 0.0: recommendations describe problems or ask the applicant to fix something.
+
+---
+
+### If decision == REJECT
+
+**issues_score**
+- 1.0: All real problems are listed, attributed to the correct fields, severity is appropriate.
+- 0.5: Some problems found but list is incomplete or fields are mislabeled.
+- 0.0: issues_found is empty, or the listed issues are entirely wrong.
+
+**recommendations_score**
+- 1.0: Actionable and specific — tells the applicant exactly what to fix.
+- 0.5: Vague but relevant to the actual problems.
+- 0.0: Missing, irrelevant, or contradicts the REJECT decision.
+
+---
+
+### reasoning_score (applies to both ACCEPT and REJECT)
+- 1.0: The trace reasoning covers all validated fields; conclusions match tool results; confidence is calibrated.
+- 0.5: Reasoning present but with gaps or unexplained jumps.
+- 0.0: No meaningful reasoning, or reasoning contradicts the final report.
 """
 
 

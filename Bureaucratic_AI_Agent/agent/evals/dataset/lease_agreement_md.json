@@ -1,0 +1,74 @@
+[
+  {
+    "case_id": "lease_agreement_md_001",
+    "description": "Valid lease agreement — all 8 required sections present and complete",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": "fixtures/lease_agreement_md/lease_valid.docx",
+    "expected_decision": "ACCEPT",
+    "expected_issues": [],
+    "required_tools": ["read_document_page"],
+    "forbidden_tools": [],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "lease_agreement_md_002",
+    "description": "Missing security deposit clause",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": "fixtures/lease_agreement_md/lease_no_deposit.docx",
+    "expected_decision": "REJECT",
+    "expected_issues": ["security_deposit"],
+    "required_tools": ["read_document_page"],
+    "forbidden_tools": [],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "lease_agreement_md_003",
+    "description": "Missing signatures section — neither party has signed",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": "fixtures/lease_agreement_md/lease_no_signatures.docx",
+    "expected_decision": "REJECT",
+    "expected_issues": ["signatures"],
+    "required_tools": ["read_document_page"],
+    "forbidden_tools": [],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "lease_agreement_md_004",
+    "description": "Rent section exists but monthly amount is not specified",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": "fixtures/lease_agreement_md/lease_no_rent.docx",
+    "expected_decision": "REJECT",
+    "expected_issues": ["monthly_rent"],
+    "required_tools": ["read_document_page"],
+    "forbidden_tools": [],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "lease_agreement_md_005",
+    "description": "Wrong document type — company memo, not a lease agreement",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": "fixtures/lease_agreement_md/random_doc.docx",
+    "expected_decision": "REJECT",
+    "expected_issues": ["document_type"],
+    "required_tools": ["read_document_page"],
+    "forbidden_tools": [],
+    "plan_steps_must_complete": []
+  },
+  {
+    "case_id": "lease_agreement_md_006",
+    "description": "No document provided",
+    "procedure": "lease_agreement_md",
+    "form_data": {},
+    "document_url": null,
+    "expected_decision": "REJECT",
+    "expected_issues": ["document"],
+    "required_tools": [],
+    "forbidden_tools": ["read_document_page", "ocr_document_region", "extract_field_from_document"],
+    "plan_steps_must_complete": []
+  }
+]

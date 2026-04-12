@@ -50,7 +50,7 @@ def _build_task(case: EvalCase) -> TaskMessage:
     if case.document_url:
         url = _resolve_url(case.document_url)
         suffix = Path(case.document_url).suffix.lower().lstrip(".")
-        fmt = {"jpg": "JPG", "jpeg": "JPG", "png": "PNG", "pdf": "PDF"}.get(suffix, "JPG")
+        fmt = {"jpg": "JPG", "jpeg": "JPG", "png": "PNG", "pdf": "PDF", "docx": "DOCX"}.get(suffix, suffix.upper())
         abs_path = Path(url.replace("file://", ""))
         file_size = abs_path.stat().st_size if abs_path.exists() else None
         doc = DocumentMetadata(
