@@ -88,4 +88,5 @@ test_callback.py
 agent/evals/results
 
 # Fixtures for evaluation
-agent/evals/fixtures/*.jpg
+agent/evals/fixtures/**/*.jpg
+agent/evals/fixtures/**/*.docx
