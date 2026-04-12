@@ -1,7 +1,7 @@
 """
 Generate fixture images for passport_md_strict eval cases.
 Run from the agent/ directory:
-    uv run python -m evals.fixtures.generate
+    uv run python -m evals.fixtures.passport_md_strict.generate
 """
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
