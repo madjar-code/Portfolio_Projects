@@ -8,11 +8,14 @@ class AIReportSerializer(ModelSerializer):
     class Meta:
         model = AIReport
         fields = (
-            "validation_result",
+            "decision",
+            "confidence_score",
             "extracted_data",
             "issues_found",
             "recommendations",
             "ai_model_used",
+            "prompt_version",
+            "processing_time_seconds",
             "created_at",
         )
 

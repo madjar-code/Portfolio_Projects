@@ -99,18 +99,26 @@ class Document(BaseModel):
         return self.file_name
 
 
+class AIDecision(models.TextChoices):
+    ACCEPT = "ACCEPT"
+    REJECT = "REJECT"
+    ERROR  = "ERROR"
+
+
 class AIReport(UUIDModel, TimeStampModel):
     application = models.OneToOneField(
         Application,
         on_delete=models.CASCADE,
         related_name="report",
     )
-    validation_result = models.JSONField(default=dict)
+    decision = models.CharField(max_length=10, choices=AIDecision.choices, default=AIDecision.REJECT)
+    confidence_score = models.FloatField(null=True, blank=True)
     extracted_data = models.JSONField(default=dict)
     issues_found = models.JSONField(default=list)
     recommendations = models.TextField(blank=True)
     processing_time_seconds = models.PositiveIntegerField(null=True, blank=True)
     ai_model_used = models.CharField(max_length=50, blank=True)
+    prompt_version = models.CharField(max_length=50, blank=True)
 
     class Meta:
         indexes = [

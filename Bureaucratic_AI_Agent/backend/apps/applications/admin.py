@@ -14,12 +14,14 @@ class AIReportInline(admin.StackedInline):
     model = AIReport
     extra = 0
     readonly_fields = (
-        "validation_result",
+        "decision",
+        "confidence_score",
         "extracted_data",
         "issues_found",
         "recommendations",
         "processing_time_seconds",
         "ai_model_used",
+        "prompt_version",
         "created_at",
         "updated_at",
     )

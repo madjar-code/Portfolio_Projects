@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework import serializers, status
 
-from apps.applications.models import Application, AIReport
+from apps.applications.models import Application, AIReport, AIDecision
 from apps.applications.constants import ApplicationStatus
 
 from config.redis_client import publish_sse_event
@@ -13,13 +13,21 @@ from config.hmac_auth import verify_hmac_signature
 
 class AIReportCallbackSerializer(serializers.Serializer):
     application_id = serializers.UUIDField()
-    decision = serializers.ChoiceField(choices=["ACCEPT", "REJECT"])
-    validation_result = serializers.JSONField()
-    extracted_data = serializers.JSONField()
-    issues_found = serializers.JSONField()
-    recommendations = serializers.CharField(allow_blank=True)
+    decision = serializers.ChoiceField(choices=AIDecision.choices)
+    confidence_score = serializers.FloatField(min_value=0.0, max_value=1.0, required=False, allow_null=True)
+    extracted_data = serializers.JSONField(default=dict)
+    issues_found = serializers.JSONField(default=list)
+    recommendations = serializers.CharField(allow_blank=True, allow_null=True, required=False)
     processing_time_seconds = serializers.IntegerField(min_value=0)
     ai_model_used = serializers.CharField()
+    prompt_version = serializers.CharField(required=False, allow_blank=True, default="unknown")
+
+
+_DECISION_TO_STATUS = {
+    AIDecision.ACCEPT: ApplicationStatus.APPROVED,
+    AIDecision.REJECT: ApplicationStatus.REJECTED,
+    AIDecision.ERROR: ApplicationStatus.FAILED,
+}
 
 
 class CallbackView(APIView):
@@ -57,22 +65,20 @@ class CallbackView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        new_status = (
-            ApplicationStatus.APPROVED
-            if data["decision"] == "ACCEPT"
-            else ApplicationStatus.REJECTED
-        )
+        new_status = _DECISION_TO_STATUS[data["decision"]]
 
         with transaction.atomic():
             AIReport.objects.update_or_create(
                 application=application,
                 defaults={
-                    "validation_result": data["validation_result"],
+                    "decision": data["decision"],
+                    "confidence_score": data.get("confidence_score"),
                     "extracted_data": data["extracted_data"],
                     "issues_found": data["issues_found"],
-                    "recommendations": data["recommendations"],
+                    "recommendations": data.get("recommendations") or "",
                     "processing_time_seconds": data["processing_time_seconds"],
                     "ai_model_used": data["ai_model_used"],
+                    "prompt_version": data["prompt_version"],
                 },
             )
             application.status = new_status
