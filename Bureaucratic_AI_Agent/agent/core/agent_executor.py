@@ -24,6 +24,18 @@ class TraceEvent:
     result: str | None = None
 
 
+def _sandbox(text: str, tool_name: str) -> str:
+    """
+    Wrap unstructured tool output so the model can
+    distinguish it from trusted instructions.
+    """
+    return (
+        f'<untrusted_document_content tool="{tool_name}">\n'
+        f'{text}\n'
+        f'</untrusted_document_content>'
+    )
+
+
 class AgentExecutor:
     """
     Implements the ReAct loop: Action → Observation → Reflection.
@@ -90,6 +102,9 @@ class AgentExecutor:
                     result=result,
                 ))
 
+                tool = self._tool_registry._tools.get(tc["name"])
+                if tool and tool.untrusted:
+                    result = _sandbox(result, tc["name"])
                 tool_messages.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
                 )
@@ -130,6 +145,9 @@ class AgentExecutor:
                 logger.info("Reflection → %s(%s)", tc["name"], tc["args"])
                 result = await self._tool_registry.execute(tc["name"], tc["args"])
                 logger.info("Result: %.200s", result)
+                tool = self._tool_registry._tools.get(tc["name"])
+                if tool and tool.untrusted:
+                    result = _sandbox(result, tc["name"])
                 reflection_tool_messages.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
                 )

@@ -10,6 +10,7 @@ class Tool:
     description: str
     parameters: dict[str, Any]
     fn: Callable[..., Awaitable[str]]
+    untrusted: bool = False             # True for tools that return user-controlled document content
 
 
 class ToolRegistry:

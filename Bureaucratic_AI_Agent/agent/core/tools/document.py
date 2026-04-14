@@ -150,6 +150,7 @@ def build_document_registry(task: TaskMessage) -> ToolRegistry:
             "required": ["page_number"],
         },
         fn=lambda page_number: _read_document_page(url, fmt, fetcher, page_number),
+        untrusted=True,
     ))
 
     registry.register(Tool(
@@ -167,6 +168,7 @@ def build_document_registry(task: TaskMessage) -> ToolRegistry:
             "required": ["page", "x", "y", "width", "height"],
         },
         fn=lambda page, x, y, width, height: _ocr_document_region(url, fmt, fetcher, page, x, y, width, height),
+        untrusted=True,
     ))
 
     registry.register(Tool(
@@ -178,6 +180,7 @@ def build_document_registry(task: TaskMessage) -> ToolRegistry:
             "required": ["field_name"],
         },
         fn=lambda field_name: _extract_field_from_document(url, fmt, fetcher, field_name),
+        untrusted=True,
     ))
 
     return registry
