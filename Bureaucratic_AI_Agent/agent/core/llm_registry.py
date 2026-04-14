@@ -6,8 +6,11 @@ from config import settings
 PRODUCTION = settings.production
 
 
-class LLMRegistry:
-    LLMS = [
+def _build_registry() -> list[dict]:
+    entries: list[dict] = []
+
+    # OpenAI
+    entries += [
         {
             "name": "gpt-4o-mini",
             "llm": ChatOpenAI(
@@ -27,6 +30,34 @@ class LLMRegistry:
             ),
         },
     ]
+
+    # Anthropic — registered only if the API key is configured
+    if settings.anthropic_api_key:
+        from langchain_anthropic import ChatAnthropic
+        entries += [
+            {
+                "name": "claude-haiku-4-5",
+                "llm": ChatAnthropic(
+                    model="claude-haiku-4-5-20251001",
+                    temperature=0.2,
+                    api_key=settings.anthropic_api_key,
+                ),
+            },
+            {
+                "name": "claude-sonnet-4-6",
+                "llm": ChatAnthropic(
+                    model="claude-sonnet-4-6",
+                    temperature=0.2,
+                    api_key=settings.anthropic_api_key,
+                ),
+            },
+        ]
+
+    return entries
+
+
+class LLMRegistry:
+    LLMS = _build_registry()
 
     @classmethod
     def get(cls, model_name: str) -> BaseChatModel:

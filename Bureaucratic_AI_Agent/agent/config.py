@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     agent_api_key: str
 
     openai_api_key: str
+    anthropic_api_key: str | None = None
     production: bool = False
     prompt_version: str = "v1"
     default_model: str = "gpt-4o-mini"
