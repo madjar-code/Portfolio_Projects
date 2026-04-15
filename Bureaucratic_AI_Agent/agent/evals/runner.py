@@ -29,8 +29,9 @@ _DATASET_DIR = Path(__file__).parent / "dataset"
 _RESULTS_DIR = Path(__file__).parent / "results"
 
 
-def _load_cases(procedure: str) -> list[EvalCase]:
-    path = _DATASET_DIR / f"{procedure}.json"
+def _load_cases(procedure: str, dataset: str | None = None) -> list[EvalCase]:
+    name = dataset or procedure
+    path = _DATASET_DIR / f"{name}.json"
     if not path.exists():
         raise FileNotFoundError(f"Dataset not found: {path}")
     raw = json.loads(path.read_text(encoding="utf-8"))
@@ -137,11 +138,12 @@ async def run_eval(
     prompt_version: str | None = None,
     judge_model: str | None = None,
     case_ids: list[str] | None = None,
+    dataset: str | None = None,
 ) -> EvalRunSummary:
     version = prompt_version or settings.prompt_version
     judge = judge_model or settings.eval_judge_model
 
-    cases = _load_cases(procedure)
+    cases = _load_cases(procedure, dataset)
     if case_ids:
         cases = [c for c in cases if c.case_id in case_ids]
     logger.info("Running %d eval cases for procedure=%s prompt=%s", len(cases), procedure, version)
@@ -206,6 +208,7 @@ if __name__ == "__main__":
     parser.add_argument("--prompt-version", default=None)
     parser.add_argument("--judge-model", default=None)
     parser.add_argument("--cases", nargs="+", default=None, metavar="CASE_ID")
+    parser.add_argument("--dataset", default=None, help="Dataset filename stem (defaults to procedure name)")
     args = parser.parse_args()
 
-    asyncio.run(run_eval(args.procedure, args.prompt_version, args.judge_model, args.cases))
+    asyncio.run(run_eval(args.procedure, args.prompt_version, args.judge_model, args.cases, args.dataset))
