@@ -90,3 +90,10 @@ agent/evals/results
 # Fixtures for evaluation
 agent/evals/fixtures/**/*.jpg
 agent/evals/fixtures/**/*.docx
+
+# Architecture hidden documents
+architecture/3_Technical/Specs
+architecture/**/AI_Security_Coverage.md
+
+# Injection scanner patterns
+agent/core/security_patterns.json
