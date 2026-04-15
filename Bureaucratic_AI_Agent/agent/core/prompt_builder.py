@@ -49,7 +49,9 @@ class PromptBuilder:
             f"**Application ID:** {task.application_id}\n"
             f"**Procedure:** {task.procedure}\n\n"
             "### Form Data\n"
-            f"```json\n{json.dumps(task.form_data, indent=2, ensure_ascii=False)}\n```\n\n"
+            "<untrusted_form_data>\n"
+            f"```json\n{json.dumps(task.form_data, indent=2, ensure_ascii=False)}\n```\n"
+            "</untrusted_form_data>\n\n"
             f"{doc_block}\n\n"
             "---\n\n"
             "## Required Output Schema\n\n"
@@ -64,10 +66,12 @@ class PromptBuilder:
         size = f"{doc.file_size} bytes" if doc.file_size else "unknown"
         return (
             "### Submitted Document\n"
+            "<untrusted_document_metadata>\n"
             f"- Filename: {doc.file_name}\n"
             f"- Format:   {doc.file_format}\n"
             f"- Size:     {size}\n"
-            f"- URL:      {doc.file_url}\n\n"
+            f"- URL:      {doc.file_url}\n"
+            "</untrusted_document_metadata>\n\n"
             "Use tools to read the document content as needed."
         )
 

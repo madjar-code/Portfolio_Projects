@@ -2,6 +2,8 @@ import logging
 from dataclasses import dataclass
 from langchain_core.messages import HumanMessage, ToolMessage
 
+from config import settings
+from core.security import scan_for_injection, _INJECTION_REJECT
 from core.tools import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -93,7 +95,7 @@ class AgentExecutor:
                     tool_args=tc["args"],
                 ))
                 result = await self._tool_registry.execute(tc["name"], tc["args"])
-                logger.info("Result: %.200s", result)
+                logger.info("Result: %.2000s", result)
                 trace.append(TraceEvent(
                     iteration=iteration,
                     step="observation",
@@ -104,6 +106,11 @@ class AgentExecutor:
 
                 tool = self._tool_registry._tools.get(tc["name"])
                 if tool and tool.untrusted:
+                    if settings.enable_injection_scanner:
+                        detected, result = scan_for_injection(result, source=tc["name"])
+                        if detected and settings.injection_scanner_hard_stop:
+                            logger.warning("Hard stop: returning _INJECTION_REJECT")
+                            return _INJECTION_REJECT, trace
                     result = _sandbox(result, tc["name"])
                 tool_messages.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
@@ -143,10 +150,28 @@ class AgentExecutor:
                 if tc["name"] == "submit_report":
                     continue
                 logger.info("Reflection → %s(%s)", tc["name"], tc["args"])
+                trace.append(TraceEvent(
+                    iteration=iteration,
+                    step="reflection_action",
+                    tool_name=tc["name"],
+                    tool_args=tc["args"],
+                ))
                 result = await self._tool_registry.execute(tc["name"], tc["args"])
-                logger.info("Result: %.200s", result)
+                logger.info("Result: %.2000s", result)
+                trace.append(TraceEvent(
+                    iteration=iteration,
+                    step="reflection_observation",
+                    tool_name=tc["name"],
+                    tool_args=tc["args"],
+                    result=result,
+                ))
                 tool = self._tool_registry._tools.get(tc["name"])
                 if tool and tool.untrusted:
+                    if settings.enable_injection_scanner:
+                        detected, result = scan_for_injection(result, source=tc["name"])
+                        if detected and settings.injection_scanner_hard_stop:
+                            logger.warning("Hard stop: returning _INJECTION_REJECT")
+                            return _INJECTION_REJECT, trace
                     result = _sandbox(result, tc["name"])
                 reflection_tool_messages.append(
                     ToolMessage(content=result, tool_call_id=tc["id"])
