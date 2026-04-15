@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     default_model: str = "gpt-4o-mini"
     eval_judge_model: str = "gpt-4o-mini"
 
+    enable_injection_scanner: bool = False   # set True to activate core/security.py scanner
+    injection_scanner_hard_stop: bool = False  # if True, detected injection → immediate REJECT without LLM
+    max_document_size_mb: int = 20           # documents exceeding this size are rejected before reading
+
     model_config = SettingsConfigDict(env_file=_ENV_FILE)
 
 
