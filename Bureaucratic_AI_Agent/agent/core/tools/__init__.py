@@ -24,7 +24,10 @@ class ToolRegistry:
         tool = self._tools.get(name)
         if tool is None:
             return f"Error: unknown tool '{name}'"
-        return await tool.fn(**arguments)
+        try:
+            return await tool.fn(**arguments)
+        except Exception as exc:
+            return f"Error: {exc}"
 
     def as_langchain_tools(self) -> list[StructuredTool]:
         """Convert registered tools to LangChain StructuredTools for model.bind_tools()."""
