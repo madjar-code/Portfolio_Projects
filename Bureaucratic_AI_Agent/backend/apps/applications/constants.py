@@ -29,12 +29,14 @@ PROCEDURES: dict[str, dict] = {
         "name": "Passport Application MD",
         "description": "Application for a new passport in Moldova.",
         "required_document_formats": ["PDF", "JPG", "PNG"],
+        "document_required": True,
         "instruction_file": "procedures/passport_md.md",
     },
     ProcedureType.BUSINESS_REG: {
         "name": "Individual Entrepreneur Registration",
         "description": "Registration of an individual entrepreneur.",
-        "required_document_formats": ["PDF", "DOCX"],
+        "required_document_formats": [],
+        "document_required": False,
         "instruction_file": "procedures/business_reg.md",
     },
 }
