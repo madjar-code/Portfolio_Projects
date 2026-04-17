@@ -68,8 +68,7 @@ createsuperuser:
 collectstatic:
 	python manage.py collectstatic --noinput
 
-create-buckets:
-	python manage.py create_buckets
+create-buckets: minio-public-media minio-public-static
 
 # ─── MINIO ─────────────────────────────────────────────────────────────────
 
