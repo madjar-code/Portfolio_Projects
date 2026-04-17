@@ -96,7 +96,7 @@ async def run_case(
     model = LLMRegistry.get(settings.default_model).bind_tools(all_tools)
 
     executor = AgentExecutor(model, tool_registry, max_iterations=20)
-    submit_args, trace = await executor.run(messages)
+    submit_args, trace, _iterations = await executor.run(messages)
 
     elapsed = int(time.monotonic() - start)
     actual_decision = (submit_args or {}).get("decision")

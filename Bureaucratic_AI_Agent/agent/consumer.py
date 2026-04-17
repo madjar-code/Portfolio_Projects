@@ -8,7 +8,12 @@ from aio_pika.abc import AbstractIncomingMessage
 from callback import send_callback
 from config import settings
 from core.handler import handle_task
+from core.logging_config import setup_logging
+from core.sentry_setup import init_sentry
 from models import TaskMessage
+
+setup_logging()
+init_sentry()
 
 logger = logging.getLogger(__name__)
 

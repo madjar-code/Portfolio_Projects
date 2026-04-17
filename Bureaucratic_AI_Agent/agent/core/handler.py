@@ -1,6 +1,7 @@
 import time
 import logging
 from typing import Any
+import sentry_sdk
 from pydantic import BaseModel, Field
 from langchain_core.messages import (
     SystemMessage,
@@ -11,6 +12,7 @@ from langchain_core.tools import StructuredTool
 from config import settings
 from core.agent_executor import AgentExecutor
 from core.knowledge_base import knowledge_base, KnowledgeBaseError
+from core.observability import agent_trace
 from core.llm_registry import LLMRegistry
 from core.tools.factory import build_registry_for_task
 from core.prompt_builder import prompt_builder
@@ -165,40 +167,59 @@ async def handle_task(task: TaskMessage, prompt_version: str | None = None) -> A
     model = LLMRegistry.get(model_name).bind_tools(all_tools)
 
     # 4. Run agent
-    executor = AgentExecutor(model, tool_registry, max_iterations=MAX_ITERATIONS)
-    try:
-        submit_args, _trace = await executor.run(messages)
-    except Exception as exc:
-        logger.exception("Agent error: %s", exc)
-        return _error_report(
-            task,
-            "llm_error",
-            f"Unexpected error during processing: {exc}",
-            version,
-            model_name,
-            int(time.monotonic() - start),
-        )
+    async with agent_trace(task) as obs_trace:
+        with sentry_sdk.new_scope() as scope:
+            scope.set_tag("procedure", task.procedure)
+            scope.set_tag("application_id", task.application_id)
 
-    elapsed = int(time.monotonic() - start)
+            executor = AgentExecutor(model, tool_registry, max_iterations=MAX_ITERATIONS, trace=obs_trace, model_name=model_name)
+            try:
+                submit_args, _events, iterations = await executor.run(messages)
+            except Exception as exc:
+                elapsed = int(time.monotonic() - start)
+                sentry_sdk.capture_exception(exc)
+                logger.exception("Agent error: %s", exc)
+                obs_trace.end(decision=None, iterations=0, elapsed_ms=elapsed * 1000)
+                return _error_report(
+                    task,
+                    "llm_error",
+                    f"Unexpected error during processing: {exc}",
+                    version,
+                    model_name,
+                    elapsed,
+                )
 
-    if submit_args is None:
-        logger.warning(
-            "Max iterations reached without submit_report: application=%s",
+        elapsed = int(time.monotonic() - start)
+
+        if submit_args is None:
+            logger.warning(
+                "Max iterations reached without submit_report: application=%s",
+                task.application_id,
+            )
+            sentry_sdk.capture_message(
+                f"Max iterations reached: {task.application_id} / {task.procedure}",
+                level="warning",
+            )
+            obs_trace.end(decision=None, iterations=iterations, elapsed_ms=elapsed * 1000)
+            return _error_report(
+                task,
+                "max_iterations_reached",
+                "Agent reached the iteration limit without submitting a report. Please retry.",
+                version,
+                model_name,
+                elapsed,
+            )
+
+        logger.info(
+            "Task complete: application=%s decision=%s iterations=%d time=%ds",
             task.application_id,
-        )
-        return _error_report(
-            task,
-            "max_iterations_reached",
-            "Agent reached the iteration limit without submitting a report. Please retry.",
-            version,
-            model_name,
+            submit_args.get("decision"),
+            iterations,
             elapsed,
         )
-
-    logger.info(
-        "Task complete: application=%s decision=%s time=%ds",
-        task.application_id,
-        submit_args.get("decision"),
-        elapsed,
-    )
-    return _build_report(task, submit_args, model_name, version, elapsed)
+        obs_trace.end(
+            decision=submit_args.get("decision"),
+            iterations=iterations,
+            elapsed_ms=elapsed * 1000,
+        )
+        return _build_report(task, submit_args, model_name, version, elapsed)

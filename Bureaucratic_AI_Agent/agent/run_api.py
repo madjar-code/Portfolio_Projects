@@ -6,10 +6,11 @@ from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, UploadFile
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s:%(name)s:%(message)s",
-)
+from core.logging_config import setup_logging
+from core.sentry_setup import init_sentry
+
+setup_logging()
+init_sentry()
 
 app = FastAPI(title="Agent /run endpoint")
 logger = logging.getLogger(__name__)

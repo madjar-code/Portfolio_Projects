@@ -97,3 +97,6 @@ architecture/**/AI_Security_Coverage.md
 
 # Injection scanner patterns
 agent/core/security_patterns.json
+
+# Agent log files
+agent/logs/
