@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import timedelta
 from pathlib import Path
 
@@ -25,12 +26,15 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "drf_yasg",
     "django_filters",
+    "django_prometheus",
 
     "apps.auth",
     "apps.applications",
 ]
 
 MIDDLEWARE = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "common.logging.request_id.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -38,6 +42,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -151,3 +156,101 @@ CELERY_TIMEZONE = TIME_ZONE
 AGENT_API_KEY = os.environ.get("AGENT_API_KEY", "")
 
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
+# Logging
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
+
+_ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
+
+
+class _StripAnsiFilter:
+    """Strip ANSI color codes from log records.
+
+    Django's WSGIRequestHandler pre-colors the access message and passes it
+    via record.args (logger.log(..., "%s", colored_msg)), so we scrub both
+    record.msg and record.args.
+    """
+    def filter(self, record):
+        if isinstance(record.msg, str):
+            record.msg = _ANSI_ESCAPE.sub("", record.msg)
+        if record.args:
+            record.args = tuple(
+                _ANSI_ESCAPE.sub("", a) if isinstance(a, str) else a
+                for a in record.args
+            )
+        return True
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "strip_ansi": {"()": _StripAnsiFilter},
+        "request_id": {
+            "()": "common.logging.request_id.RequestIdFilter",
+        },
+    },
+    "formatters": {
+        "console": {
+            "format": "{levelname} {name}: {message}",
+            "style": "{",
+        },
+        "django.server": {
+            "()": "django.utils.log.ServerFormatter",
+            "format": "[{server_time}] {message}",
+            "style": "{",
+        },
+        "json": {
+            "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
+            "format": "%(asctime)s %(levelname)s %(name)s %(request_id)s %(message)s",
+            "rename_fields": {"asctime": "timestamp", "levelname": "level", "name": "logger"},
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "console",
+        },
+        "console_server": {
+            "class": "logging.StreamHandler",
+            "formatter": "django.server",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "backend.log",
+            "maxBytes": 10 * 1024 * 1024,
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "formatter": "json",
+            "filters": ["strip_ansi", "request_id"],
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["console_server", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "level": "WARNING",
+            "propagate": True,
+        },
+        "apps": {
+            "handlers": ["console", "file"],
+            "level": LOG_LEVEL,
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console", "file"],
+        "level": LOG_LEVEL,
+    },
+}
