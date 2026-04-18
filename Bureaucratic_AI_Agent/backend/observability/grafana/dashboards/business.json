@@ -1,0 +1,75 @@
+{
+  "title": "Business (Applications)",
+  "uid": "backend-business",
+  "schemaVersion": 38,
+  "timezone": "browser",
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "bargauge",
+      "title": "Funnel (last 1h): created → submitted → decided",
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 6},
+      "targets": [
+        {"expr": "sum(increase(applications_created_total[1h]))", "legendFormat": "created", "refId": "A"},
+        {"expr": "sum(increase(applications_submitted_total[1h]))", "legendFormat": "submitted", "refId": "B"},
+        {"expr": "sum(increase(applications_decided_total[1h]))", "legendFormat": "decided", "refId": "C"}
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Decisions over time",
+      "gridPos": {"x": 0, "y": 6, "w": 12, "h": 8},
+      "targets": [{
+        "expr": "sum by (decision) (rate(applications_decided_total[5m]))",
+        "legendFormat": "{{decision}}",
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 3,
+      "type": "table",
+      "title": "Decisions by procedure (last 1h)",
+      "gridPos": {"x": 12, "y": 6, "w": 12, "h": 8},
+      "targets": [{
+        "expr": "sum by (procedure, decision) (increase(applications_decided_total[1h]))",
+        "format": "table",
+        "instant": true,
+        "refId": "A"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "End-to-end duration p50 / p95",
+      "gridPos": {"x": 0, "y": 14, "w": 12, "h": 8},
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(application_processing_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(application_processing_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {"defaults": {"unit": "s"}}
+    },
+    {
+      "id": 5,
+      "type": "heatmap",
+      "title": "Confidence score distribution",
+      "gridPos": {"x": 12, "y": 14, "w": 12, "h": 8},
+      "targets": [{
+        "expr": "sum by (le) (rate(application_confidence_score_bucket[5m]))",
+        "format": "heatmap",
+        "legendFormat": "{{le}}",
+        "refId": "A"
+      }]
+    }
+  ]
+}
