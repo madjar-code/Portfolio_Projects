@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer
 from apps.applications.constants import PROCEDURES
 from apps.applications.models import Application, Document, AIReport
+from apps.applications.metrics import applications_created_total
 
 
 class AIReportSerializer(ModelSerializer):
@@ -81,6 +82,7 @@ class ApplicationCreateSerializer(ModelSerializer):
                 user=user,
                 file=document_file,
             )
+        applications_created_total.labels(procedure=application.procedure).inc()
         return application
 
     def to_representation(self, instance):

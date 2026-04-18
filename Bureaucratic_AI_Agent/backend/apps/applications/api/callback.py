@@ -1,4 +1,5 @@
 from django.db import transaction
+from django.utils import timezone
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -6,6 +7,11 @@ from rest_framework import serializers, status
 
 from apps.applications.models import Application, AIReport, AIDecision
 from apps.applications.constants import ApplicationStatus
+from apps.applications.metrics import (
+    application_confidence_score,
+    application_processing_duration_seconds,
+    applications_decided_total,
+)
 
 from config.redis_client import publish_sse_event
 from config.hmac_auth import verify_hmac_signature
@@ -89,5 +95,16 @@ class CallbackView(APIView):
                 status=new_status,
                 application_number=application.application_number,
             )
+
+        labels = {"procedure": application.procedure, "decision": data["decision"]}
+        applications_decided_total.labels(**labels).inc()
+
+        confidence = data.get("confidence_score")
+        if confidence is not None:
+            application_confidence_score.labels(**labels).observe(confidence)
+
+        if application.submitted_at is not None:
+            elapsed = (timezone.now() - application.submitted_at).total_seconds()
+            application_processing_duration_seconds.labels(**labels).observe(elapsed)
 
         return Response({"status": "ok"}, status=status.HTTP_200_OK)

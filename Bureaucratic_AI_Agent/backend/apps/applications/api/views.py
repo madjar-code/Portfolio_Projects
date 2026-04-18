@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from apps.applications.models import Application, ApplicationStatus
+from apps.applications.metrics import applications_submitted_total
 from apps.applications.constants import PROCEDURES
 from .serializers import ApplicationListSerializer, ApplicationDetailSerializer, ApplicationCreateSerializer
 from .permissions import IsOwner
@@ -78,6 +79,8 @@ class ApplicationSubmitView(APIView):
         application.status = ApplicationStatus.SUBMITTED
         application.submitted_at = timezone.now()
         application.save(update_fields=["status", "submitted_at", "updated_at"])
+
+        applications_submitted_total.labels(procedure=application.procedure).inc()
 
         from apps.applications.tasks.process_application import process_application
         process_application.delay(str(application.id))
