@@ -1,382 +1,128 @@
 ## **1. Overview**
 
-Task processing by the agent is an **iterative cycle** of planning, execution, and reflection.
+Monitoring and evaluation are two complementary feedback loops that keep the agent trustworthy over time.
 
-The agent does not follow a rigid algorithm. Instead, it:
+- **Monitoring** operates on **live traffic**. It answers: *what is happening right now?* — which procedures are being processed, what decisions the agent is making, where it fails, how long a reasoning loop takes.
+- **Evaluation** operates on **curated datasets** offline. It answers: *is the agent still good enough to ship?* — every change to the prompt, the model, or a tool is scored against known-good examples before reaching production.
 
-- receives procedure instructions through the prompt,
-- forms an action plan,
-- executes the plan through tools,
-- reflects on the results,
-- adjusts actions as necessary.
+Neither replaces the other. Monitoring catches real-world problems after release; evaluation prevents obvious regressions before release.
 
-The key feature is that the agent **interprets** the procedure and **adapts** its actions based on the data.
+---
 
-Main components (see diagram):
+## **2. Runtime Observability**
 
-- **Agent Orchestration** — manages the overall flow
-- **Prompt Builder** — forms the context with instructions
-- **Reasoning Loop** — iterative cycle of "plan → action → reflection"
-- **Tool Set** — tools for working with documents and data
-- **LLM Registry** — manages LLM calls
+The agent exposes its internal state through three independent channels.
 
-## **2. High-Level Execution Flow**
+### **2.1 LangFuse — per-run tracing**
 
-Task processing goes through three main phases.
+Every agent run is a single **trace** in LangFuse, keyed by `application_id`. Inside the trace we record:
 
-### **2.1 Initialization**
+- **generations** — each LLM call (model, input messages, output, tokens, latency)
+- **events** — each tool invocation (name, args, result)
+- **metadata** — procedure, prompt version, final decision, iteration count
 
-```
-1. Queue Consumer receives a task from the queue
-   ↓
-2. Agent Orchestration initializes the context
-   ↓
-3. The procedure is loaded (metadata from SQLite + instructions from Knowledge Base)
-   ↓
-4. Prompt Builder forms the prompt with:
-   - procedure instructions
-   - application metadata (form_data)
-   - document metadata (URL, filename)
-   - list of available tools
-```
+**Role:**
 
-**Result:** the agent receives the full context to begin work.
+> LangFuse is the **narrative view** of a run. It lets a reviewer reconstruct *why* the agent decided ACCEPT or REJECT for a specific application.
 
-### **2.2 Execution (Reasoning Loop)**
+If LangFuse is unavailable or not configured, observability degrades to a no-op wrapper — the agent keeps working, just without the trace.
 
-The agent performs the task through an **iterative cycle**:
+### **2.2 Structured Logging**
 
-```
-loop until task_complete:
-    Planning: forming/adjusting the plan
-    ↓
-    Action: selecting and calling a tool
-    ↓
-    Observation: receiving the result
-    ↓
-    Reflection: analyzing progress and adjusting
-```
+The agent writes to two sinks:
 
-**Important:**
+- **stdout** — for Docker / orchestrator log capture
+- **`agent.log`** — a local rotating file (10 MB × 5 files), useful for `grep` and for preserving the last few hours of activity without a backend.
 
-> The agent **does not follow a rigid plan**. It adapts its actions based on the received data.
-> 
+Log records are line-oriented and include the application id where relevant, so a single run can be reconstructed with a plain text search even if LangFuse is disabled.
 
-### **2.3 Completion**
+### **2.3 Error Reporting (Sentry)**
 
-When the agent has completed processing:
+Uncaught exceptions and agent-level failures are reported to Sentry (production only). Sentry groups similar errors and surfaces regressions that otherwise hide inside long successful batches.
+
+### **2.4 What the agent deliberately does not monitor**
+
+- **Per-user PII** is not attached to spans or log lines.
+- **Document contents** are not copied into traces; only metadata (filename, format) is recorded. The full text exists transiently during tool calls.
+
+These constraints keep observability useful without turning it into an audit liability.
+
+---
+
+## **3. Offline Evaluation**
+
+Evaluation runs **outside** the live pipeline. It loads a fixed dataset, executes the agent against each case, and scores the outputs through evaluators.
+
+### **3.1 Dataset Organization**
+
+Datasets live under `agent/evals/dataset/` and are **split along two axes**:
+
+- **By procedure type** — separate dataset per procedure. A change to the `passport_md_strict` prompt only needs to be re-scored against its own dataset, not the whole corpus.
+- **By purpose** — for each procedure, a **functional** dataset (does the agent make the right decision on realistic inputs?) is kept separate from a **security** dataset (does the agent resist prompt injection, instruction override, data exfiltration attempts?).
 
 ```
-1. Forming a structured report (AIReport)
-   ↓
-2. Validating the report format (Pydantic)
-   ↓
-3. Sending via Callback Client to Backend API
-   ↓
-4. Logging the result
-   ↓
-5. Task completion
+agent/evals/dataset/
+├── business_reg.json
+├── lease_agreement_md.json
+├── lease_agreement_md_security.json
+├── passport_md_strict.json
+└── passport_md_strict_security.json
 ```
 
-## **3. Reasoning Loop**
+**Why the split matters:**
 
-This is the **central mechanism** of the agent. Implemented through LangGraph state machine.
+> A functional dataset measures *accuracy*. A security dataset measures *robustness*. These two have different cost profiles, different baselines, and often different owners — merging them would hide regressions in one behind gains in the other.
 
-### **3.1 Loop Structure**
+### **3.2 Evaluators**
 
-### **3.2 Planning**
+Each case is scored along multiple dimensions rather than reduced to a single pass/fail.
 
-The agent forms or adjusts the plan based on:
+- **Decision evaluator (LLM-as-judge)** — compares the agent's final decision and rationale against the expected outcome.
+- **Plan evaluator** — checks that the agent's reasoning plan covered the steps required by the procedure.
+- **Tool-usage evaluator** — checks that expected tools were called and unnecessary ones were avoided.
 
-- procedure instructions (from the prompt),
-- current execution state,
-- already collected data.
+**Principle:**
 
-**Example of an initial plan:**
+> A run can pass the decision evaluator while still failing the plan or tool evaluator (for example, arriving at the right answer through the wrong path). Surfacing those separately is what makes evaluation actionable rather than just a green/red badge.
 
-```
-Passport application processing plan:
-1. Read the first page of the document (birth certificate)
-2. Extract full name via OCR
-3. Extract date of birth
-4. Compare with form data
-5. Check in Civil Registry database via external API
-6. Make decision: ACCEPT or REJECT
-```
+### **3.3 Fixtures**
 
-**Important:**
+Realistic inputs used by datasets (sample PDFs, form data, expected outputs) live under `agent/evals/fixtures/`. They are checked into the repo so evaluation runs are reproducible and diffable over time.
 
-> The plan **is not fixed**. The agent adjusts it when problems are detected or unexpected data is received.
-> 
+---
 
-### **3.3 Action (Tool Execution)**
-
-The agent selects and executes a tool from the Tool Set.
-
-**Available tools:**
-
-- `read_document_page(page_number)` — read a document page
-- `ocr_document_region(page, x, y, width, height)` — OCR for a region
-- `extract_field_from_document(field_name)` — extract a specific field
-- `call_external_api(endpoint, params)` — request to external API
-- `search_knowledge_base(query)` — search for examples
-
-**Example:**
-
-```json
-Action: read_document_page
-Parameters: {"page_number": 1}
-
-Result: "BIRTH CERTIFICATE\nFull Name: Ivanov Ivan Ivanovich\n..."
-```
-
-### **3.4 Observation**
-
-The agent receives the tool execution result and adds it to the context.
+## **4. How the two feedback loops connect**
 
 ```
-Observation:
-First page of the document has been read.
-Text found: "Full Name: Ivanov Ivan Ivanovich"
+   ┌─────────────────┐        regression found        ┌─────────────────┐
+   │  Live Agent     │ ──────────────────────────▶    │  Evaluation     │
+   │ (LangFuse,      │                                │  dataset update │
+   │  logs, Sentry)  │ ◀──────────────────────────    │ (+ new case)    │
+   └─────────────────┘     new prompt version          └─────────────────┘
 ```
 
-### **3.5 Reflection**
+- A failure in production → a new case is distilled from the LangFuse trace and added to the relevant dataset.
+- A new prompt / model / tool → evaluation scores must not drop before the change is merged.
 
-The agent analyzes the results and decides on further actions.
+Over time this turns real incidents into permanent guardrails.
 
-**Reflection questions:**
+---
 
-- Has the goal of the current step been achieved?
-- Is plan adjustment needed?
-- Have any discrepancies or problems been detected?
-- Is there enough data to make a final decision?
+## **5. Summary**
 
-**Example reflection:**
+The system treats monitoring and evaluation as two independent **feedback mechanisms** with distinct roles:
 
-```
-Reflection:
-- Full name successfully extracted: "Ivanov Ivan Ivanovich"
-- Matches form data: "Ivanov Ivan Ivanovich" ✓
-- Next step: extract date of birth
-```
-
-**Reflection result:**
-
-- **Continue** → return to Planning for the next step
-- **Complete** → proceed to report formation
-
-## **4. Adaptive Planning**
-
-A key feature of the agent is its ability to **adjust the plan** during execution **within the procedure instructions**.
-
-### **4.1 Initial Planning**
-
-When receiving a task, the agent forms an initial plan based on the procedure instructions from the prompt.
-
-### **4.2 Bounded Adaptation**
-
-The agent adapts its actions, **but remains within the procedure boundaries**.
-
-**Important principle:**
-
-> The agent can change the **method** of executing steps, but cannot ignore the **procedure requirements**.
-> 
-
-**What the agent CAN do:**
-
-- choose an alternative tool (OCR instead of PDF parser)
-- repeat an action with different parameters
-- use a different approach to data extraction
-
-**What the agent CANNOT do:**
-
-- skip a mandatory check
-- change procedure requirements
-- search for data where the procedure does not expect it
-
-### **4.3 Replanning Example**
-
-**Scenario 1: Permissible adaptation**
-
-```
-Procedure instruction: "Extract full name from birth certificate"
-
-Original plan:
-1. Read document via PDF parser
-2. Find full name
-
-Problem: PDF parser could not extract text
-
-Plan adjustment (permissible):
-1. Use OCR to read the document
-2. Find full name
-3. If OCR doesn't help — mark document as unreadable
-```
-
-**Scenario 2: Impermissible adaptation**
-
-```
-Procedure instruction: "Full name must be on the first page of the certificate"
-
-Original plan:
-1. Read the first page
-2. Extract full name
-
-Problem: No full name on the first page
-
-Impermissible adjustment:
-❌ Read the second page and search there
-
-Permissible adjustment:
-✓ Use OCR for the first page (different reading method)
-✓ If not found — record as NON-COMPLIANCE with requirements
-✓ Include in report: "Full name is missing on the first page"
-```
-
-### **4.4 Handling Non-Compliance**
-
-If data does not meet procedure requirements:
-
-```
-1. The agent does NOT try to "fit" data to requirements
-2. Records the discrepancy in the report
-3. Marks as issue with severity: "critical"
-4. Recommends: REJECT
-```
-
-**Result:**
-
-> The agent adapts to **technical problems** (how to read the document), but strictly follows **business requirements** (what should be in the document).
-> 
-
-## **5. Reflection and Self-Correction**
-
-The agent is capable of **analyzing its actions** and correcting errors.
-
-### **5.1 Reflection Levels**
-
-**Lightweight Reflection** — after each action:
-
-- What was received?
-- Does it meet expectations?
-- Are additional actions needed?
-
-**Deep Reflection** — before the final decision:
-
-- Have all checks been completed?
-- Are there any contradictions in the data?
-- Is there sufficient confidence to make a decision?
-
-### **5.2 Self-Correction Example**
-
-```
-Observation:
-Date extracted: "01.13.1990"
-
-Reflection:
-This is an invalid date (month cannot be 13).
-Probably, the format is MM.DD.YYYY, not DD.MM.YYYY.
-
-Correction:
-Reinterpret as "13.01.1990" (DD.MM.YYYY).
-Result: "1990-01-13"
-```
-
-### **5.3 Confidence Assessment**
-
-The agent evaluates confidence in its conclusions:
-
-```json
-{
-  "field": "birth_date",
-  "value": "1990-01-13",
-  "confidence": 0.85,
-  "reasoning": "Date extracted from clear text, but format required interpretation"
-}
-```
-
-With low confidence (< 0.7), the agent:
-
-- marks the field as requiring verification,
-- includes a warning in the report,
-- may attempt an alternative approach.
-
-## **6. Error Handling and Retry**
-
-The system handles errors at multiple levels.
-
-### **6.1 Tool-Level Retry**
-
-If a tool returns an error (timeout, network error):
-
-```
-Attempt 1: read_document_page → timeout
-Attempt 2: read_document_page (increased timeout) → success
-```
-
-**Parameters:**
-
-- max retries: 3
-- exponential backoff: 1s, 2s, 4s
-
-### **6.2 LLM-Level Retry**
-
-If LLM returns an invalid response:
-
-```
-Attempt 1: LLM → invalid JSON
-Attempt 2: LLM (refined prompt + example) → valid JSON
-```
-
-### **6.3 Task-Level Retry**
-
-If the task completely fails:
-
-```
-Attempt 1: agent execution → exception
-Attempt 2: agent execution (with logs from previous attempt) → success
-```
-
-**Management:** Celery retry mechanism (max 3 attempts)
-
-### **6.4 Graceful Degradation**
-
-If a non-critical step fails, the agent continues working:
-
-```
-Problem: external API is unavailable
-
-Solution:
-- mark the check as "not completed"
-- continue with other checks
-- include a warning in the report
-```
-
-## **7. Summary**
-
-The agent's execution cycle is an **adaptive iterative process within the procedure**, not a rigid algorithm.
+- **Monitoring** — live, per-run, narrative-oriented. Answers "what happened".
+  - LangFuse traces, rotating `agent.log`, Sentry.
+- **Evaluation** — offline, dataset-driven, regression-oriented. Answers "did we get worse".
+  - Datasets split by procedure and by purpose (functional vs security).
+  - Multiple evaluators (decision, plan, tool-usage) score each case along separate axes.
 
 **Key principles:**
 
-- **Interpretation** — the agent receives instructions through the prompt and interprets them
-- **Planning** — forms a plan based on the procedure
-- **Iterativity** — cycle of "plan → action → observation → reflection"
-- **Bounded Adaptation** — adjusts the **method** of execution, but not the **procedure requirements**
-- **Reflection** — analyzes results and corrects errors
-- **Resilience** — multi-level retry strategy
-- **Lazy loading** — reads documents as needed, not entirely
+- **Separation of concerns** — monitoring does not replace evaluation, and vice versa.
+- **Fail-open observability** — if LangFuse or Sentry is unavailable, the agent still runs; traces are best-effort.
+- **Security is a first-class dataset** — not an afterthought bolted onto functional suites.
+- **Incidents become test cases** — real failures feed back into the offline dataset.
 
-**Important limitation:**
-
-> The agent adapts to technical problems (how to read the document), but strictly follows business requirements of the procedure (what should be in the document).
-> 
-
-**Architectural components (see diagram):**
-
-- **Agent Orchestration** — manages the overall flow
-- **Prompt Builder** — forms the context with instructions
-- **Reasoning Loop** — implements the iterative cycle
-- **Tool Set** — provides tools for working with documents
-- **LLM Registry** — manages LLM calls
-
-This architecture ensures flexibility in execution while strictly adhering to procedure requirements.
+This separation ensures the agent can be both **debugged in production** and **improved in a controlled way** without relying on one channel for both jobs.
