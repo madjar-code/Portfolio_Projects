@@ -5,11 +5,12 @@ from config import settings
 
 PRODUCTION = settings.production
 
+_LLM_REQUEST_TIMEOUT = 60  # seconds per LLM HTTP call
+
 
 def _build_registry() -> list[dict]:
     entries: list[dict] = []
 
-    # OpenAI
     entries += [
         {
             "name": "gpt-4o-mini",
@@ -17,6 +18,7 @@ def _build_registry() -> list[dict]:
                 model="gpt-4o-mini",
                 temperature=0.2,
                 api_key=settings.openai_api_key,
+                timeout=_LLM_REQUEST_TIMEOUT,
             ),
         },
         {
@@ -27,11 +29,11 @@ def _build_registry() -> list[dict]:
                 top_p=0.95 if PRODUCTION else 0.8,
                 presence_penalty=0.1 if PRODUCTION else 0.0,
                 api_key=settings.openai_api_key,
+                timeout=_LLM_REQUEST_TIMEOUT,
             ),
         },
     ]
 
-    # Anthropic — registered only if the API key is configured
     if settings.anthropic_api_key:
         from langchain_anthropic import ChatAnthropic
         entries += [
@@ -41,6 +43,7 @@ def _build_registry() -> list[dict]:
                     model="claude-haiku-4-5-20251001",
                     temperature=0.2,
                     api_key=settings.anthropic_api_key,
+                    timeout=_LLM_REQUEST_TIMEOUT,
                 ),
             },
             {
@@ -49,12 +52,12 @@ def _build_registry() -> list[dict]:
                     model="claude-sonnet-4-6",
                     temperature=0.2,
                     api_key=settings.anthropic_api_key,
+                    timeout=_LLM_REQUEST_TIMEOUT,
                 ),
             },
         ]
 
     return entries
-
 
 class LLMRegistry:
     LLMS = _build_registry()
@@ -75,3 +78,12 @@ class LLMRegistry:
     @classmethod
     def available_models(cls) -> list[str]:
         return [entry["name"] for entry in cls.LLMS]
+
+    @classmethod
+    def fallback_chain(cls, preferred: str | None = None) -> list[dict]:
+        """Return the list of entries to try in order, starting from preferred."""
+        if not preferred:
+            return list(cls.LLMS)
+        preferred_entry = next((e for e in cls.LLMS if e["name"] == preferred), None)
+        others = [e for e in cls.LLMS if e["name"] != preferred]
+        return ([preferred_entry] + others) if preferred_entry else list(cls.LLMS)
