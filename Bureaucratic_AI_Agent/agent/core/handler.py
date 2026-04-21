@@ -1,4 +1,5 @@
 import time
+import asyncio
 import logging
 from typing import Any
 import sentry_sdk
@@ -15,6 +16,7 @@ from core.knowledge_base import knowledge_base, KnowledgeBaseError
 from core.observability import agent_trace
 from core.llm_registry import LLMRegistry
 from core.tools.factory import build_registry_for_task
+from core.errors import LLMTerminalError, classify_llm_error
 from core.prompt_builder import prompt_builder
 from core.prompt_version_registry import PromptVersionNotFoundError
 from models import TaskMessage, AIReportPayload
@@ -22,6 +24,8 @@ from models import TaskMessage, AIReportPayload
 logger = logging.getLogger(__name__)
 
 MAX_ITERATIONS = 20
+
+TASK_TIMEOUT_SECONDS = 300  # 5 minutes wall-clock per task
 
 
 # ---------------------------------------------------------------------------
@@ -122,104 +126,105 @@ def _error_report(
 
 async def handle_task(task: TaskMessage, prompt_version: str | None = None) -> AIReportPayload:
     version = prompt_version or settings.prompt_version
-    model_name = settings.default_model
+    preferred_model = settings.default_model
 
     logger.info(
-        "Handling task: application=%s procedure=%s prompt_version=%s model=%s",
-        task.application_id,
-        task.procedure,
-        version,
-        model_name,
+        "Handling task: application=%s procedure=%s prompt_version=%s preferred_model=%s",
+        task.application_id, task.procedure, version, preferred_model,
     )
 
     start = time.monotonic()
 
-    # 1. Load procedure instructions
+    # 1. Load procedure instructions (terminal if it fails)
     try:
         instructions = knowledge_base.load(task.procedure)
         logger.info("Loaded procedure instructions (%d chars)", len(instructions))
     except KnowledgeBaseError as exc:
         logger.error("Knowledge base error: %s", exc)
-        return _error_report(
-            task,
-            "configuration_error",
-            "Procedure instructions not found. Contact system administrator.",
-            version,
-            model_name,
-            0,
-        )
+        return _error_report(task, "configuration_error", str(exc), version, preferred_model, 0)
 
-    # 2. Build messages
+    # 2. Build messages (terminal if it fails)
     try:
         raw_messages = prompt_builder.build(task, instructions, version)
     except PromptVersionNotFoundError as exc:
         logger.error("Prompt version error: %s", exc)
-        return _error_report(
-            task, "configuration_error", str(exc), version, model_name, 0
-        )
-
+        return _error_report(task, "configuration_error", str(exc), version, preferred_model, 0)
     messages = _to_lc_messages(raw_messages)
 
-    # 3. Build tool-bound model
-    tool_registry = build_registry_for_task(task)
-    submit_tool = _make_submit_report_tool()
-    all_tools = tool_registry.as_langchain_tools() + [submit_tool]
-    model = LLMRegistry.get(model_name).bind_tools(all_tools)
+    # 3. Iterate fallback chain
+    chain = LLMRegistry.fallback_chain(preferred_model)
+    last_error: Exception | None = None
 
-    # 4. Run agent
-    async with agent_trace(task) as obs_trace:
-        with sentry_sdk.new_scope() as scope:
-            scope.set_tag("procedure", task.procedure)
-            scope.set_tag("application_id", task.application_id)
+    for entry in chain:
+        model_name = entry["name"]
+        llm = entry["llm"]
 
-            executor = AgentExecutor(model, tool_registry, max_iterations=MAX_ITERATIONS, trace=obs_trace, model_name=model_name)
-            try:
-                submit_args, _events, iterations = await executor.run(messages)
-            except Exception as exc:
-                elapsed = int(time.monotonic() - start)
-                sentry_sdk.capture_exception(exc)
-                logger.exception("Agent error: %s", exc)
-                obs_trace.end(decision=None, iterations=0, elapsed_ms=elapsed * 1000)
+        tool_registry = build_registry_for_task(task)
+        submit_tool = _make_submit_report_tool()
+        all_tools = tool_registry.as_langchain_tools() + [submit_tool]
+        model = llm.bind_tools(all_tools)
+
+        async with agent_trace(task) as obs_trace:
+            with sentry_sdk.new_scope() as scope:
+                scope.set_tag("procedure", task.procedure)
+                scope.set_tag("application_id", task.application_id)
+                scope.set_tag("model", model_name)
+
+                executor = AgentExecutor(
+                    model, tool_registry,
+                    max_iterations=MAX_ITERATIONS,
+                    trace=obs_trace, model_name=model_name,
+                )
+                try:
+                    submit_args, _events, iterations = await asyncio.wait_for(
+                        executor.run(messages),
+                        timeout=TASK_TIMEOUT_SECONDS,
+                    )
+                except Exception as exc:
+                    error_class = classify_llm_error(exc)
+                    if error_class is LLMTerminalError:
+                        logger.error(
+                            "reliability=llm_terminal model=%s error=%s → surfacing",
+                            model_name, exc,
+                        )
+                        raise
+                    logger.warning(
+                        "reliability=llm_fallback_advance model=%s error=%s",
+                        model_name, exc,
+                    )
+                    last_error = exc
+                    obs_trace.end(decision=None, iterations=0, elapsed_ms=0)
+                    continue  # try next model
+
+            elapsed = int(time.monotonic() - start)
+
+            if submit_args is None:
+                logger.warning(
+                    "Max iterations reached without submit_report: application=%s model=%s",
+                    task.application_id, model_name,
+                )
+                obs_trace.end(decision=None, iterations=iterations, elapsed_ms=elapsed * 1000)
                 return _error_report(
-                    task,
-                    "llm_error",
-                    f"Unexpected error during processing: {exc}",
-                    version,
-                    model_name,
-                    elapsed,
+                    task, "max_iterations_reached",
+                    "Agent reached the iteration limit without submitting a report.",
+                    version, model_name, elapsed,
                 )
 
-        elapsed = int(time.monotonic() - start)
+            logger.info(
+                "Task complete: application=%s model=%s decision=%s iterations=%d time=%ds",
+                task.application_id, model_name,
+                submit_args.get("decision"), iterations, elapsed,
+            )
+            obs_trace.end(
+                decision=submit_args.get("decision"),
+                iterations=iterations,
+                elapsed_ms=elapsed * 1000,
+            )
+            return _build_report(task, submit_args, model_name, version, elapsed)
 
-        if submit_args is None:
-            logger.warning(
-                "Max iterations reached without submit_report: application=%s",
-                task.application_id,
-            )
-            sentry_sdk.capture_message(
-                f"Max iterations reached: {task.application_id} / {task.procedure}",
-                level="warning",
-            )
-            obs_trace.end(decision=None, iterations=iterations, elapsed_ms=elapsed * 1000)
-            return _error_report(
-                task,
-                "max_iterations_reached",
-                "Agent reached the iteration limit without submitting a report. Please retry.",
-                version,
-                model_name,
-                elapsed,
-            )
-
-        logger.info(
-            "Task complete: application=%s decision=%s iterations=%d time=%ds",
-            task.application_id,
-            submit_args.get("decision"),
-            iterations,
-            elapsed,
-        )
-        obs_trace.end(
-            decision=submit_args.get("decision"),
-            iterations=iterations,
-            elapsed_ms=elapsed * 1000,
-        )
-        return _build_report(task, submit_args, model_name, version, elapsed)
+    # Chain exhausted — raise so the consumer can redeliver / DLQ
+    logger.error(
+        "reliability=llm_chain_exhausted application=%s last_error=%s",
+        task.application_id, last_error,
+    )
+    raise RuntimeError(f"All LLM models exhausted: {last_error}")
