@@ -1,4 +1,7 @@
+import logging
+
 from django.utils import timezone
+from kombu.exceptions import OperationalError as KombuOperationalError
 from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
@@ -11,6 +14,8 @@ from apps.applications.metrics import applications_submitted_total
 from apps.applications.constants import PROCEDURES
 from .serializers import ApplicationListSerializer, ApplicationDetailSerializer, ApplicationCreateSerializer
 from .permissions import IsOwner
+
+logger = logging.getLogger(__name__)
 
 
 class ProcedureListView(APIView):
@@ -83,7 +88,19 @@ class ApplicationSubmitView(APIView):
         applications_submitted_total.labels(procedure=application.procedure).inc()
 
         from apps.applications.tasks.process_application import process_application
-        process_application.delay(str(application.id))
+        try:
+            process_application.delay(str(application.id))
+        except (KombuOperationalError, ConnectionError) as exc:
+            logger.error(
+                "reliability=enqueue_failed application=%s error=%s",
+                application.id, exc,
+            )
+            application.status = ApplicationStatus.FAILED
+            application.save(update_fields=["status", "updated_at"])
+            return Response(
+                {"error": {"message": "Task queue unavailable. Please try again later."}},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         serializer = ApplicationDetailSerializer(application, context={"request": request})
         return Response(serializer.data, status=status.HTTP_202_ACCEPTED)
