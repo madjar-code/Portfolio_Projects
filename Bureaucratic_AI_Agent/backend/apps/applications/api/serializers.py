@@ -107,3 +107,35 @@ class ApplicationDetailSerializer(ModelSerializer):
             "documents",
             "report",
         )
+
+
+class ApplicationUpdateSerializer(ModelSerializer):
+    document = serializers.FileField(write_only=True, required=False)
+
+    class Meta:
+        model = Application
+        fields = ("form_data", "document")
+
+    def validate_form_data(self, value):
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except json.JSONDecodeError:
+                raise serializers.ValidationError("Invalid JSON.")
+        return value
+
+    def update(self, instance, validated_data):
+        document_file = validated_data.pop("document", None)
+        instance.form_data = validated_data.get("form_data", instance.form_data)
+        instance.save(update_fields=["form_data", "updated_at"])
+        if document_file is not None:
+            from apps.applications.models import Document
+            Document.objects.create(
+                application=instance,
+                user=instance.user,
+                file=document_file,
+            )
+        return instance
+
+    def to_representation(self, instance):
+        return ApplicationDetailSerializer(instance, context=self.context).data

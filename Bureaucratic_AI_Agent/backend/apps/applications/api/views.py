@@ -2,7 +2,7 @@ import logging
 
 from django.utils import timezone
 from kombu.exceptions import OperationalError as KombuOperationalError
-from rest_framework.generics import ListAPIView, RetrieveAPIView, CreateAPIView
+from rest_framework.generics import ListAPIView, CreateAPIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -12,7 +12,12 @@ from rest_framework import status
 from apps.applications.models import Application, ApplicationStatus
 from apps.applications.metrics import applications_submitted_total
 from apps.applications.constants import PROCEDURES
-from .serializers import ApplicationListSerializer, ApplicationDetailSerializer, ApplicationCreateSerializer
+from .serializers import (
+    ApplicationListSerializer,
+    ApplicationDetailSerializer,
+    ApplicationCreateSerializer,
+    ApplicationUpdateSerializer,
+)
 from .permissions import IsOwner
 
 logger = logging.getLogger(__name__)
@@ -39,17 +44,51 @@ class CurrentUserApplications(ListAPIView):
         return Application.active_objects.filter(user=self.request.user)
 
 
-class ApplicationDetailView(RetrieveAPIView):
-    """Retrieve a single application by application_number with documents and report."""
-    serializer_class = ApplicationDetailSerializer
-    permission_classes = (IsOwner,)
-    lookup_field = "application_number"
-    lookup_url_kwarg = "application_number"
+NON_DELETABLE_STATUSES = {ApplicationStatus.SUBMITTED, ApplicationStatus.PROCESSING}
 
-    def get_queryset(self):
+
+class ApplicationDetailView(APIView):
+    """GET/PATCH/DELETE a single application by application_number."""
+    permission_classes = (IsOwner,)
+    parser_classes = (MultiPartParser, FormParser)
+
+    def _get_application(self, request, application_number):
         return Application.active_objects.filter(
-            user=self.request.user
-        ).prefetch_related("documents").select_related("report")
+            application_number=application_number,
+            user=request.user,
+        ).prefetch_related("documents").select_related("report").first()
+
+    def get(self, request, application_number):
+        app = self._get_application(request, application_number)
+        if app is None:
+            return Response({"error": {"message": "Application not found."}}, status=status.HTTP_404_NOT_FOUND)
+        return Response(ApplicationDetailSerializer(app, context={"request": request}).data)
+
+    def patch(self, request, application_number):
+        app = self._get_application(request, application_number)
+        if app is None:
+            return Response({"error": {"message": "Application not found."}}, status=status.HTTP_404_NOT_FOUND)
+        if app.status != ApplicationStatus.DRAFT:
+            return Response(
+                {"error": {"message": "Only DRAFT applications can be edited."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer = ApplicationUpdateSerializer(app, data=request.data, partial=True, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def delete(self, request, application_number):
+        app = self._get_application(request, application_number)
+        if app is None:
+            return Response({"error": {"message": "Application not found."}}, status=status.HTTP_404_NOT_FOUND)
+        if app.status in NON_DELETABLE_STATUSES:
+            return Response(
+                {"error": {"message": "Applications in SUBMITTED or PROCESSING state cannot be deleted."}},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        app.soft_delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ApplicationCreateView(CreateAPIView):
