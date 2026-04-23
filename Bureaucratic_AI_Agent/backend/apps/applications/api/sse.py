@@ -38,13 +38,12 @@ async def sse_view(request):
         try:
             yield "event: connected\ndata: {}\n\n"
             while True:
-                msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=30.0)
                 if msg and msg["type"] == "message":
                     data = msg["data"].decode() if isinstance(msg["data"], bytes) else msg["data"]
                     yield f"event: application_updated\ndata: {data}\n\n"
                 else:
                     yield ": keepalive\n\n"
-                    await asyncio.sleep(29)
         except asyncio.CancelledError:
             logger.info("SSE disconnected: user=%s", user.id)
         finally:
