@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "drf_yasg",
     "django_filters",
     "django_prometheus",
+    "corsheaders",
 
     "apps.auth",
     "apps.applications",
@@ -37,6 +38,7 @@ MIDDLEWARE = [
     "common.logging.request_id.RequestIdMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

@@ -6,6 +6,11 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "host.docker.internal"]
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 AUTH_PASSWORD_VALIDATORS = []
 
 _MINIO_ENDPOINT = os.environ.get("AWS_S3_ENDPOINT_URL", "http://localhost:9000")
@@ -28,10 +33,10 @@ STORAGES = {
         "OPTIONS": {**_S3_OPTIONS_BASE, "bucket_name": AWS_S3_BUCKET_MEDIA},   # noqa: F405
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {**_S3_OPTIONS_BASE, "bucket_name": AWS_S3_BUCKET_STATIC},  # noqa: F405
     },
 }
 
 MEDIA_URL = f"{_MINIO_ENDPOINT}/{AWS_S3_BUCKET_MEDIA}/"   # noqa: F405
-STATIC_URL = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405
+STATIC_URL = f"{_MINIO_ENDPOINT}/{AWS_S3_BUCKET_STATIC}/"  # noqa: F405
