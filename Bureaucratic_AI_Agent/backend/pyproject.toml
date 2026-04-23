@@ -20,4 +20,5 @@ dependencies = [
     "uvicorn>=0.44.0",
     "django-prometheus>=2.3.1",
     "python-json-logger>=3.2.0",
+    "django-cors-headers>=4.9.0",
 ]
