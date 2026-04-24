@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.pyc
+
+.env
+.env.*
+
+logs/
+staticfiles/
+*.log
+
+.git/
+.gitignore
+Makefile
+*.md
+
+# Test and eval artefacts
+scripts/
