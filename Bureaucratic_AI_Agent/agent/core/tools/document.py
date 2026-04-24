@@ -4,7 +4,7 @@ import logging
 import re
 from core.tools import Tool, ToolRegistry
 from core.tools._fetcher import DocumentFetcher
-from core.tools._vision import vision_extract
+from core.tools._vision import ocr_extract
 from models import TaskMessage
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ async def _read_pdf_page(content: bytes, page_number: int) -> str:
     doc = fitz.open(stream=content, filetype="pdf")
     pix = doc[page_number - 1].get_pixmap(dpi=150)
     png_bytes = pix.tobytes("png")
-    return await vision_extract(png_bytes, "image/png", _OCR_PROMPT)
+    return await ocr_extract(png_bytes, "image/png", _OCR_PROMPT)
 
 
 async def _read_docx_page(content: bytes, page_number: int) -> str:
@@ -80,7 +80,7 @@ async def _read_document_page(
         return await _read_docx_page(content, page_number)
     elif file_format in ("JPG", "PNG"):
         mime = "image/jpeg" if file_format == "JPG" else "image/png"
-        return await vision_extract(content, mime, _OCR_PROMPT)
+        return await ocr_extract(content, mime, _OCR_PROMPT)
     return f"Unsupported format: {file_format}"
 
 
@@ -105,7 +105,7 @@ async def _ocr_document_region(
     region = img.crop((x, y, x + width, y + height))
     buf = io.BytesIO()
     region.save(buf, format="PNG")
-    return await vision_extract(buf.getvalue(), "image/png", _REGION_PROMPT)
+    return await ocr_extract(buf.getvalue(), "image/png", _REGION_PROMPT)
 
 
 async def _extract_field_from_document(

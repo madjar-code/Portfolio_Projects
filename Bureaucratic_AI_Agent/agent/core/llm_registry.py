@@ -57,6 +57,20 @@ def _build_registry() -> list[dict]:
             },
         ]
 
+    if settings.ollama_base_url:
+        entries += [
+            {
+                "name": settings.ollama_model,
+                "llm": ChatOpenAI(
+                    model=settings.ollama_model,
+                    base_url=f"{settings.ollama_base_url}/v1",
+                    api_key="ollama",
+                    temperature=0.2,
+                    timeout=_LLM_REQUEST_TIMEOUT,
+                ),
+            },
+        ]
+
     return entries
 
 class LLMRegistry:

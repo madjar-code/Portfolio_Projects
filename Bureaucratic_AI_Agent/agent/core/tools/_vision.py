@@ -19,3 +19,12 @@ async def vision_extract(image_bytes: bytes, mime_type: str, prompt: str) -> str
     logger.debug("Vision extract: model=%s mime=%s bytes=%d", _VISION_MODEL, mime_type, len(image_bytes))
     response = await llm.ainvoke([msg])
     return response.content
+
+
+async def ocr_extract(image_bytes: bytes, mime_type: str, prompt: str) -> str:
+    """Route OCR to Tesseract or OpenAI Vision based on USE_TESSERACT setting."""
+    from config import settings
+    if settings.use_tesseract:
+        from core.tools._tesseract import tesseract_extract
+        return await tesseract_extract(image_bytes, mime_type, prompt)
+    return await vision_extract(image_bytes, mime_type, prompt)

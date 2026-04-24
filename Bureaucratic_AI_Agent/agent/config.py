@@ -12,6 +12,8 @@ class Settings(BaseSettings):
 
     openai_api_key: str
     anthropic_api_key: str | None = None
+    ollama_base_url: str | None = None  # e.g. http://host.docker.internal:11434
+    ollama_model: str = "qwen2.5:7b"
     production: bool = False
     prompt_version: str = "v1"
     default_model: str = "gpt-4o-mini"
@@ -25,6 +27,7 @@ class Settings(BaseSettings):
     enable_injection_scanner: bool = False
     injection_scanner_hard_stop: bool = False
     max_document_size_mb: int = 20
+    use_tesseract: bool = False
 
     model_config = SettingsConfigDict(env_file=_ENV_FILE)
 
