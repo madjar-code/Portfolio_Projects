@@ -21,6 +21,7 @@ export default function ApplicationCreatePage() {
   const [procedures, setProcedures] = useState<Procedure[]>([])
   const [selectedProcedure, setSelectedProcedure] = useState('')
   const [formData, setFormData] = useState<Record<string, string>>({})
+  const [rawJson, setRawJson] = useState('{}')
   const [file, setFile] = useState<File | undefined>()
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -57,7 +58,7 @@ export default function ApplicationCreatePage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Procedure</label>
           <select
             value={selectedProcedure}
-            onChange={e => { setSelectedProcedure(e.target.value); setFormData({}) }}
+            onChange={e => { setSelectedProcedure(e.target.value); setFormData({}); setRawJson('{}') }}
             required
             className="w-full border rounded px-3 py-2 text-sm"
           >
@@ -73,8 +74,9 @@ export default function ApplicationCreatePage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Form data (JSON)</label>
             <textarea
-              value={JSON.stringify(formData, null, 2)}
+              value={rawJson}
               onChange={e => {
+                setRawJson(e.target.value)
                 try { setFormData(JSON.parse(e.target.value)) } catch {}
               }}
               rows={6}
