@@ -10,7 +10,7 @@ C4Context
     System(backendApi, "Backend API", "Manages application lifecycle, user data, and orchestrates processing")
     System(aiAgent, "AI Agent", "Processes applications using LLM and validates documents")
     System(objectStorage, "Object Storage", "S3/MinIO - stores user documents")
-    System(llmProvider, "LLM Provider", "Open AI GPT 4")
+    System(llmProvider, "LLM Provider", "OpenAI / Anthropic")
     System(mockExternalApi, "Mock External API", "External validation")
     
     System_Boundary(bureaucraticSystem, "Bureaucratic App System") {
@@ -34,11 +34,11 @@ C4Context
 This Context diagram shows the high-level view of the Bureaucratic AI Agent system:
 
 - **User**: A regular citizen who interacts with the system
-- **Web Client (SPA)**: Single-page application built with NextJS/TypeScript that provides the user interface
+- **Web Client (SPA)**: Single-page application built with React/TypeScript (Vite) that provides the user interface
 - **Backend API**: Core system that manages applications, user data, and orchestrates processing
 - **AI Agent**: Intelligent component that processes applications using LLM and validates documents
 - **Object Storage**: S3/MinIO storage for user documents
-- **LLM Provider**: OpenAI GPT-4 for AI processing
+- **LLM Provider**: OpenAI (gpt-4o-mini default) / Anthropic, configurable via `DEFAULT_MODEL`
 - **Mock External API**: External validation service
 
 The system boundary "Bureaucratic App System" encompasses the main components that make up the application.

@@ -22,12 +22,12 @@ stateDiagram-v2
     PROCESSING --> FAILED: System error (user does not see this status)
 
     PROCESSING --> REJECTED: AI validation rejected
-    PROCESSING --> ACCEPTED: AI validation passed
+    PROCESSING --> APPROVED: AI validation passed
 
     FAILED --> PROXY_STATUS: Hide problem from user
     PROXY_STATUS --> [*]
     REJECTED --> [*]
-    ACCEPTED --> [*]
+    APPROVED --> [*]
 ```
 
 ## **3. States**
@@ -37,7 +37,7 @@ stateDiagram-v2
 - **PROCESSING** — agent is processing the application
 - **FAILED (internal)** — system error (not shown to user)
 - **REJECTED** — application rejected based on AI validation results
-- **ACCEPTED** — application successfully passed verification
+- **APPROVED** — application successfully passed verification
 - **PROXY_STATUS** — user-facing error representation
 
 ## **4. Flow Summary**
@@ -45,11 +45,11 @@ stateDiagram-v2
 1. `DRAFT → SUBMITTED` — user submits the application
 2. `SUBMITTED → PROCESSING` — agent starts processing
 3. Possible outcomes:
-    - `PROCESSING → ACCEPTED`
+    - `PROCESSING → APPROVED`
     - `PROCESSING → REJECTED`
     - `PROCESSING → FAILED → PROXY_STATUS`
 
-Final states: `ACCEPTED`, `REJECTED`, `PROXY_STATUS`.
+Final states: `APPROVED`, `REJECTED`, `PROXY_STATUS`.
 
 ## **5. Notes**
 

@@ -48,8 +48,8 @@ This document details the functional and non-functional requirements for the bur
 | --- | --- | --- | --- |
 | FR-APP-200 | The system must allow the user to view a list of their applications. | Citizen | Pagination, sorting by creation date, filtering by status. |
 | FR-APP-201 | The system must allow the user to open an application detail page. | Citizen | View all application data, uploaded documents, status history. |
-| FR-APP-202 | The system must allow the user to cancel an application before processing begins. | Citizen | The application transitions to "Cancelled" status. |
-| FR-APP-203 | The system must display the current application status. | Citizen | Statuses: "Draft", "Under Review", "Processing", "Additional Info Required", "Approved", "Rejected", "Cancelled". |
+| FR-APP-202 | The system must allow the user to cancel an application before processing begins. | Citizen | Not yet implemented. |
+| FR-APP-203 | The system must display the current application status. | Citizen | Statuses: DRAFT, SUBMITTED, PROCESSING, APPROVED, REJECTED, FAILED. |
 
 ### **3.3 AI Agent Application Processing (FR-AGENT)**
 
@@ -75,6 +75,8 @@ This document details the functional and non-functional requirements for the bur
 | FR-PROCEDURE-403 | The agent uses procedure descriptions for dynamic verification and tool usage | AI Agent |  |
 
 ### **4.2 Document Templates (FR-TEMPLATE)**
+
+> **Not implemented.** Planned for future iteration.
 
 | **ID** | **Requirement** | **Role** | **Notes** |
 | --- | --- | --- | --- |

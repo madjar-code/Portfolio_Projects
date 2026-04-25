@@ -15,7 +15,7 @@ The point is that I don't want to create an overly restrictive system. I want to
 
 The platform includes the following parts:
 
-1. A simple client that displays applications and their statuses (Next.js)
+1. A simple client that displays applications and their statuses (React/TypeScript)
 2. The agent system itself with a backend wrapper
 
 ---
@@ -29,9 +29,6 @@ This is not a business project ⇒ business goals are not applicable here
 - Develop business requirements: functional and non-functional
 - Develop a complete list of required diagrams
 - End-to-end development of an AI agent using LLM
-- Work with RAG (Retrieval-Augmented Generation) for the knowledge base
-- Apply vector databases for semantic search
-- Integrate LangChain/LlamaIndex for AI orchestration
 
 ### User Goals
 
@@ -68,7 +65,7 @@ This is not a business project ⇒ business goals are not applicable here
 | End Users | Receive consultations, fill out forms | Accuracy of responses, ease of use, time savings |
 | Technical Reviewers | Evaluate as an educational/portfolio project | Proper AI agent architecture, quality RAG, good code |
 | LLM Providers | OpenAI, Anthropic, etc. | Correct API usage, rate limit compliance |
-| Infrastructure | AWS, vector databases | Proper integration, cost optimization |
+| Infrastructure | DigitalOcean, MinIO | Proper integration, cost optimization |
 
 ---
 
@@ -77,12 +74,10 @@ This is not a business project ⇒ business goals are not applicable here
 | **Term** | **Definition** |
 | --- | --- |
 | AI Agent | An intelligent agent based on LLM capable of performing tasks and using tools |
-| RAG (Retrieval-Augmented Generation) | A technique for augmenting LLM with relevant information from a knowledge base |
 | Procedure | A bureaucratic procedure (e.g., "Passport issuance", "Individual entrepreneur registration") |
 | Document Template | A document template for filling out |
 | Checklist | A list of requirements for a specific procedure |
 | Application | An application submitted by the user through the application |
-| Embedding | A vector representation of text for semantic search |
 
 ---
 

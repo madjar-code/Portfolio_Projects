@@ -10,7 +10,7 @@ The project uses a modern technology stack for three main components: Frontend (
 
 | Technology | Purpose |
 |------------|------------|
-| **Next.js** | React-based framework with SSR/SSG |
+| **React + Vite** | SPA framework |
 | **TypeScript** | Code typing |
 | **React** | UI components |
 | **Tailwind CSS** | Styling |
@@ -40,15 +40,15 @@ The project uses a modern technology stack for three main components: Frontend (
 
 | Technology | Purpose |
 |------------|------------|
-| **Python 3.11+** | Main language |
-| **LangChain / LangGraph** | AI workflow orchestration |
-| **OpenAI API (GPT-4)** | Main LLM |
+| **Python 3.12+** | Main language |
+| **OpenAI API (gpt-4o-mini)** | Main LLM |
 | **Anthropic API (Claude)** | Alternative LLM |
-| **Tesseract / pytesseract** | OCR — text extraction from images |
+| **Tesseract / pytesseract** | OCR — text extraction from images (optional) |
 | **PyMuPDF / pdfplumber** | PDF processing |
 | **python-docx** | DOCX processing |
-| **SQLite** | Local storage of procedure metadata |
+| **Markdown files** | Procedure knowledge base |
 | **Pydantic** | Data and AIReport validation |
+| **aio-pika** | RabbitMQ consumer (async) |
 | **httpx** | HTTP client for callback |
 
 ---
@@ -59,7 +59,7 @@ The project uses a modern technology stack for three main components: Frontend (
 |------------|------------|
 | **Docker** | Containerization |
 | **Docker Compose** | Local development |
-| **AWS** | Production infrastructure |
+| **DigitalOcean** | Production infrastructure |
 | **Nginx** | Reverse proxy |
 | **GitHub Actions** | CI/CD |
 
@@ -70,8 +70,9 @@ The project uses a modern technology stack for three main components: Frontend (
 | Technology | Purpose |
 |------------|------------|
 | **Sentry** | Error tracking |
-| **LangSmith** | AI agent tracing |
-| **CloudWatch** | Logs (prod) |
+| **Langfuse** | AI agent tracing |
+| **Prometheus + Grafana** | Infrastructure metrics |
+| **python-json-logger** | Structured logging |
 | **LLM-as-Judge** | Agent evaluation |
 
 ---

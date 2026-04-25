@@ -5,13 +5,13 @@ C4Component
     title Component Diagram for Backend API
 
     Container_Boundary(apiLayerBoundary, "API Layer") {
-        Component(authApi, "Auth API", "DRF, Djoser, JWT", "Handles authentication")
+        Component(authApi, "Auth API", "DRF, simplejwt", "Handles authentication")
         Component(sseEndpoint, "SSE Endpoint", "Django Streaming", "Real-time notifications")
         Component(applicationApi, "Application API", "DRF Generic Views", "Handles authentication")
         Component(callbackApi, "Callback API", "DRF APIView", "Handles callback from the AI agent")
     }
     
-    Container_Boundary(serviceLayerBoundary, "Service Layer") {
+    Container_Boundary(serviceLayerBoundary, "Service Layer (planned)") {
         Component(applicationService, "Application Service", "Python, ABC", "Services application business logic")
         Component(reportService, "Report Service", "Python, ABC", "Report processing")
         Component(tasksService, "Tasks Service", "Python, ABC", "Handles integration with the task queue")
@@ -42,7 +42,7 @@ C4Component
 This Component diagram shows the internal structure of the Backend API system:
 
 ### API Layer
-- **Auth API**: Django REST Framework with Djoser and JWT for handling authentication
+- **Auth API**: Django REST Framework with simplejwt for handling authentication
 - **SSE Endpoint**: Django Streaming for real-time notifications to clients
 - **Application API**: DRF Generic Views for handling application CRUD operations
 - **Callback API**: DRF APIView for handling callbacks from the AI Agent

@@ -17,7 +17,6 @@ Main components:
 - **PostgreSQL** — main database
 - **Django ORM** — database operations
 - **Django Migrations** — database schema management
-- **Pydantic (optional)** — external data validation (e.g., callback)
 - **Object Storage (S3 / MinIO)** — file storage
 - **Task Queue (Celery + RabbitMQ)** — asynchronous tasks
 
@@ -51,6 +50,8 @@ It is responsible for:
 - handling callbacks from the AI agent.
 
 Business logic **is not placed in views or models**, but is centralized in services.
+
+> **Note:** In the current implementation, business logic lives primarily in views and Celery tasks. A dedicated service layer is planned for future refactoring.
 
 ### **Data Access Layer (Django ORM)**
 
@@ -155,15 +156,15 @@ After processing is complete, the AI agent sends the result via callback API.
 The backend:
 
 - accepts a POST request (DRF view)
-- performs authentication (e.g., API key)
-- validates data (serializer or Pydantic)
+- performs authentication via HMAC-SHA256 (`X-Signature` + `X-Timestamp` headers)
+- validates data (serializer)
 
 Then the service layer:
 
 - checks application existence
 - saves the report (within `transaction.atomic`)
 - updates the status:
-    - `ACCEPTED`
+    - `APPROVED`
     - `REJECTED`
 - records processing time
 

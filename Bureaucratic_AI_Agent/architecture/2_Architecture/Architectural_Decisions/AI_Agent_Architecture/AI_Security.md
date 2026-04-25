@@ -207,9 +207,12 @@ See the Security Coverage section below for the current rules per procedure.
 
 ### Layer 4 — Pattern Scanner (Optional)
 
-`core/security.py` provides regex-based detection of known injection patterns,
-covering 15 pattern families:
+`core/security.py` provides regex-based detection of known injection patterns.
+Patterns are loaded from `security_patterns.json` (not included in the repository —
+must be populated by the operator). Without the file, the scanner starts with no
+patterns loaded and logs a warning at startup.
 
+Example pattern categories:
 - Ignore-instruction variants
 - Direct submit commands (with and without qualifiers)
 - Role hijacking

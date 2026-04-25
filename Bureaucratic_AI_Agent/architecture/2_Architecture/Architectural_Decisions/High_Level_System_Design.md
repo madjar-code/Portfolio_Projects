@@ -74,7 +74,7 @@ After processing is complete, the agent sends the result back to the backend via
 
 ### **3.5 Agent Logic and Data**
 
-The application processing logic is defined through procedures stored in a separate agent database (SQLite). This allows changing system behavior without modifying the backend.
+The application processing logic is defined through procedures stored as Markdown files in `agent/knowledge_base/procedures/`. This allows changing system behavior without modifying the backend.
 
 The agent uses:
 
@@ -91,8 +91,7 @@ The system uses several types of storage:
 
 - **PostgreSQL** — storage of users, applications, and reports
 - **Object Storage** — file storage
-- **SQLite (Agent DB)** — processing procedures
-- **Knowledge Base / Document DB** — auxiliary data for the agent
+- **Markdown files** — procedure knowledge base (`agent/knowledge_base/procedures/`)
 
 Separation of storage allows independent scaling of different parts of the system.
 
