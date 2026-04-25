@@ -1,7 +1,8 @@
 .PHONY: help up up-obs down build rebuild logs \
         migrate migrations createsuperuser collectstatic shell-backend \
         create-buckets minio-alias minio-ls minio-clear-media minio-clear-static \
-        minio-policy-media minio-policy-static
+        minio-policy-media minio-policy-static \
+        reset-db reset-all
 
 COMPOSE      = docker compose -f docker-compose.prod.yml
 COMPOSE_OBS  = $(COMPOSE) -f docker-compose.observability.yml
@@ -29,6 +30,10 @@ help:
 	@echo "    createsuperuser  Create Django superuser"
 	@echo "    collectstatic    Push static files to MinIO"
 	@echo "    shell-backend    Open Django shell"
+	@echo ""
+	@echo "  Data"
+	@echo "    reset-db            Drop postgres volume and restart (loses all DB data)"
+	@echo "    reset-all           Drop ALL volumes and restart (loses DB + MinIO + cache)"
 	@echo ""
 	@echo "  MinIO"
 	@echo "    create-buckets      Create media/static buckets and set public policy"
@@ -102,3 +107,14 @@ minio-policy-media: minio-alias
 
 minio-policy-static: minio-alias
 	$(MC) anonymous get $(MINIO_ALIAS)/$(BUCKET_STATIC)
+
+# ─── DATA ──────────────────────────────────────────────────────────────────
+
+reset-db:
+	$(COMPOSE) --env-file $(ENV_FILE) down
+	docker volume rm $$(docker volume ls -q | grep postgres_data) 2>/dev/null || true
+	$(COMPOSE) --env-file $(ENV_FILE) up -d
+
+reset-all:
+	$(COMPOSE) --env-file $(ENV_FILE) down -v
+	$(COMPOSE) --env-file $(ENV_FILE) up -d
