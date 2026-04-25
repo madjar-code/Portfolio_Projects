@@ -18,10 +18,14 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
     depends_on:
-      - db
-      - redis
-      - minio
-      - rabbitmq
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     restart: always
 
   celery:
@@ -33,9 +37,12 @@ services:
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.prod
     depends_on:
-      - db
-      - redis
-      - rabbitmq
+      db:
+        condition: service_started
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     restart: always
 
   agent:
@@ -45,7 +52,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     restart: always
 
   db:
@@ -72,6 +80,12 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
 
   minio:
     image: minio/minio:latest
